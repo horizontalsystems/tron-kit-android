@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
 import io.horizontalsystems.tronkit.ui.theme.TronkitTheme
 
 class MainActivity : ComponentActivity() {
@@ -17,9 +18,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             TronkitTheme {
+
+                val viewModel = viewModel<MainViewModel>(factory = MainViewModelFactory())
+
                 // A surface container using the 'background' color from the theme
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    Greeting("Android")
+                    Greeting(viewModel.test)
                 }
             }
         }
