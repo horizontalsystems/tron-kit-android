@@ -13,6 +13,7 @@ import io.horizontalsystems.tronkit.sync.Syncer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.StateFlow
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
 import java.util.*
@@ -23,7 +24,17 @@ class TronKit(
     private var started = false
     private var scope: CoroutineScope? = null
 
-    val blockHeightFlowable = syncer.blockHeightFlow
+    val lastBlockHeight: Long
+        get() = syncer.lastBlockHeight
+
+    val lastBlockHeightFlow: StateFlow<Long>
+        get() = syncer.lastBlockHeightFlow
+
+    val syncState: SyncState
+        get() = syncer.syncState
+
+    val syncStateFlow: StateFlow<SyncState>
+        get() = syncer.syncStateFlow
 
     fun start() {
         if (started) return

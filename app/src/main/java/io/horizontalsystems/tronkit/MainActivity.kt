@@ -3,27 +3,90 @@ package io.horizontalsystems.tronkit
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import io.horizontalsystems.tronkit.ui.theme.TronkitTheme
+import com.google.accompanist.pager.ExperimentalPagerApi
+import com.google.accompanist.pager.HorizontalPager
+import com.google.accompanist.pager.rememberPagerState
+import io.horizontalsystems.tronkit.ui.theme.EmptyComposeMaterialTheme
 
 class MainActivity : ComponentActivity() {
+
+    @OptIn(ExperimentalPagerApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            TronkitTheme {
-
+            EmptyComposeMaterialTheme {
                 val viewModel = viewModel<MainViewModel>(factory = MainViewModelFactory())
 
-                // A surface container using the 'background' color from the theme
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    Greeting(viewModel.test)
+                var selectedPage by remember {
+                    mutableStateOf(0)
+                }
+                val pagerState = rememberPagerState(initialPage = selectedPage)
+
+                LaunchedEffect(key1 = selectedPage, block = {
+                    pagerState.scrollToPage(selectedPage)
+                })
+
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colors.background) {
+                    Box(Modifier.fillMaxSize()) {
+                        Scaffold(
+                            backgroundColor = MaterialTheme.colors.background,
+                            bottomBar = {
+                                Column {
+                                    HsBottomNavigation(
+                                        backgroundColor = Color.LightGray,
+                                        elevation = 10.dp
+                                    ) {
+                                        HsBottomNavigationItem(
+                                            icon = {
+                                                Text(text = "Balance", fontSize = 18.sp)
+                                            },
+                                            selectedContentColor = Color.Yellow,
+                                            unselectedContentColor = Color.Gray,
+                                            selected = selectedPage == 0,
+                                            onClick = { selectedPage = 0 }
+                                        )
+                                        HsBottomNavigationItem(
+                                            icon = {
+                                                Text(text = "Transactions", fontSize = 18.sp)
+                                            },
+                                            selectedContentColor = Color.Yellow,
+                                            unselectedContentColor = Color.Gray,
+                                            selected = selectedPage == 1,
+                                            onClick = { selectedPage = 1 }
+                                        )
+                                    }
+                                }
+                            }
+                        ) {
+                            Column(modifier = Modifier.padding(it)) {
+                                HorizontalPager(
+                                    modifier = Modifier.weight(1f),
+                                    state = pagerState,
+                                    count = 2,
+                                    userScrollEnabled = false,
+                                    verticalAlignment = Alignment.Top
+                                ) { page ->
+                                    when (page) {
+                                        0 -> {
+                                            Balance(viewModel = viewModel)
+                                        }
+                                        1 -> {
+                                            Transactions(viewModel = viewModel)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -31,14 +94,22 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Greeting(name: String) {
-    Text(text = "Hello $name!")
+fun Balance(viewModel: MainViewModel) {
+    Column(
+        modifier = Modifier
+            .padding(16.dp)
+            .fillMaxSize()
+    ) {
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(text = "Balance: ${viewModel.balance}", fontSize = 25.sp)
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(text = "Last Block Height: ${viewModel.lastBlockHeight}", fontSize = 25.sp)
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(text = "Sync State: ${viewModel.syncState}", fontSize = 25.sp)
+    }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun DefaultPreview() {
-    TronkitTheme {
-        Greeting("Android")
-    }
+fun Transactions(viewModel: MainViewModel) {
+
 }

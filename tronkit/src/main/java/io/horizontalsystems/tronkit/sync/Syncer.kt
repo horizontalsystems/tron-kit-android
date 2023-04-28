@@ -31,7 +31,7 @@ class Syncer(
         private set(value) {
             if (value != field) {
                 field = value
-                _blockHeightFlow.update { value }
+                _lastBlockHeightFlow.update { value }
             }
         }
 
@@ -39,8 +39,8 @@ class Syncer(
     private val _syncStateFlow = MutableStateFlow(syncState)
     val syncStateFlow: StateFlow<SyncState> = _syncStateFlow
 
-    private val _blockHeightFlow = MutableStateFlow(lastBlockHeight)
-    val blockHeightFlow: StateFlow<Long> = _blockHeightFlow
+    private val _lastBlockHeightFlow = MutableStateFlow(lastBlockHeight)
+    val lastBlockHeightFlow: StateFlow<Long> = _lastBlockHeightFlow
 
     fun start(scope: CoroutineScope) {
         this.scope = scope

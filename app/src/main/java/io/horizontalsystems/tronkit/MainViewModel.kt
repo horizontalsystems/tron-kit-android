@@ -1,6 +1,8 @@
 package io.horizontalsystems.tronkit
 
-import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -11,7 +13,14 @@ class MainViewModel(
     private val kit: TronKit
 ) : ViewModel() {
 
-    val test: String = "TronKit"
+    var balance: String by mutableStateOf("N/A")
+        private set
+
+    var lastBlockHeight: Long by mutableStateOf(kit.lastBlockHeight)
+        private set
+
+    var syncState: TronKit.SyncState by mutableStateOf(kit.syncState)
+        private set
 
     init {
         viewModelScope.launch {
@@ -19,8 +28,14 @@ class MainViewModel(
         }
 
         viewModelScope.launch {
-            kit.blockHeightFlowable.collect {
-                Log.e("e", "kit.blockHeightFlowable: $it")
+            kit.lastBlockHeightFlow.collect {
+                lastBlockHeight = it
+            }
+        }
+
+        viewModelScope.launch {
+            kit.syncStateFlow.collect {
+                syncState = it
             }
         }
     }
