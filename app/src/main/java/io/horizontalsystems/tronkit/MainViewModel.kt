@@ -1,8 +1,10 @@
 package io.horizontalsystems.tronkit
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import io.horizontalsystems.tronkit.network.Network
 import kotlinx.coroutines.launch
 
 class MainViewModel(
@@ -14,6 +16,12 @@ class MainViewModel(
     init {
         viewModelScope.launch {
             kit.start()
+        }
+
+        viewModelScope.launch {
+            kit.blockHeightFlowable.collect {
+                Log.e("e", "kit.blockHeightFlowable: $it")
+            }
         }
     }
 }

@@ -3,6 +3,7 @@ package io.horizontalsystems.tronkit
 import io.horizontalsystems.hdwalletkit.ECKey
 import io.horizontalsystems.hdwalletkit.HDWallet
 import io.horizontalsystems.tronkit.crypto.Utils
+import io.horizontalsystems.tronkit.network.Network
 import java.math.BigInteger
 
 class Signer {

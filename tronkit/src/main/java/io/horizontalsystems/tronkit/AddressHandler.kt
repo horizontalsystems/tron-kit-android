@@ -2,6 +2,7 @@ package io.horizontalsystems.tronkit
 
 import io.horizontalsystems.hdwalletkit.Base58
 import io.horizontalsystems.hdwalletkit.Utils
+import io.horizontalsystems.tronkit.network.Network
 
 
 object AddressHandler {

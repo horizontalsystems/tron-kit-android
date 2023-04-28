@@ -3,21 +3,44 @@ package io.horizontalsystems.tronkit
 import android.app.Application
 import io.horizontalsystems.hdwalletkit.Mnemonic
 import io.horizontalsystems.tronkit.crypto.InternalBouncyCastleProvider
+import io.horizontalsystems.tronkit.database.MainDatabase
+import io.horizontalsystems.tronkit.database.Storage
+import io.horizontalsystems.tronkit.network.ConnectionManager
+import io.horizontalsystems.tronkit.network.Network
+import io.horizontalsystems.tronkit.network.TronGridService
+import io.horizontalsystems.tronkit.sync.SyncTimer
+import io.horizontalsystems.tronkit.sync.Syncer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
 import java.util.*
 
 class TronKit(
-    private val network: Network,
-    private val syncManager: SyncManager
+    private val syncer: Syncer
 ) {
-    // tron grid apikey: 2551eb81-3228-4c8c-889d-127d3bb73ad0
+    private var started = false
+    private var scope: CoroutineScope? = null
 
+    val blockHeightFlowable = syncer.blockHeightFlow
 
-    suspend fun start() {
-        syncManager.start()
+    fun start() {
+        if (started) return
+        started = true
+
+        scope = CoroutineScope(Dispatchers.IO)
+            .apply {
+                syncer.start(this)
+            }
     }
 
+    fun stop() {
+        started = false
+        syncer.stop()
+
+        scope?.cancel()
+    }
 
     sealed class SyncState {
         class Synced : SyncState()
@@ -52,6 +75,11 @@ class TronKit(
         }
     }
 
+    open class SyncError : Exception() {
+        class NotStarted : SyncError()
+        class NoNetworkConnection : SyncError()
+    }
+
     companion object {
 
         fun init() {
@@ -81,10 +109,17 @@ class TronKit(
             tronGridApiKey: String,
             walletId: String
         ): TronKit {
+            val syncTimer = SyncTimer(30, ConnectionManager(application))
             val tronGridService = TronGridService(network, tronGridApiKey)
-            val syncManager = SyncManager(network, tronGridService)
+            val databaseName = getDatabaseName(network, walletId)
+            val storage = Storage(MainDatabase.getInstance(application, databaseName))
+            val syncer = Syncer(syncTimer, tronGridService, storage)
 
-            return TronKit(network, syncManager)
+            return TronKit(syncer)
+        }
+
+        private fun getDatabaseName(network: Network, walletId: String): String {
+            return "Tron-${network.name}-$walletId"
         }
     }
 

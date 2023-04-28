@@ -1,5 +1,7 @@
 package io.horizontalsystems.tronkit
 
+import io.horizontalsystems.tronkit.network.Network
+
 data class Address(
     val raw: ByteArray
 ) {
