@@ -8,18 +8,22 @@ import io.horizontalsystems.tronkit.database.Storage
 import io.horizontalsystems.tronkit.network.ConnectionManager
 import io.horizontalsystems.tronkit.network.Network
 import io.horizontalsystems.tronkit.network.TronGridService
+import io.horizontalsystems.tronkit.sync.AccountInfoManager
 import io.horizontalsystems.tronkit.sync.SyncTimer
 import io.horizontalsystems.tronkit.sync.Syncer
+import io.horizontalsystems.tronkit.sync.TransactionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.StateFlow
 import org.bouncycastle.jce.provider.BouncyCastleProvider
+import java.math.BigInteger
 import java.security.Security
-import java.util.*
+import java.util.Objects
 
 class TronKit(
-    private val syncer: Syncer
+    private val syncer: Syncer,
+    private val accountInfoManager: AccountInfoManager
 ) {
     private var started = false
     private var scope: CoroutineScope? = null
@@ -29,6 +33,12 @@ class TronKit(
 
     val lastBlockHeightFlow: StateFlow<Long>
         get() = syncer.lastBlockHeightFlow
+
+    val trxBalance: BigInteger
+        get() = accountInfoManager.trxBalance
+
+    val trxBalanceFlow: StateFlow<BigInteger>
+        get() = accountInfoManager.trxBalanceFlow
 
     val syncState: SyncState
         get() = syncer.syncState
@@ -124,9 +134,11 @@ class TronKit(
             val tronGridService = TronGridService(network, tronGridApiKey)
             val databaseName = getDatabaseName(network, walletId)
             val storage = Storage(MainDatabase.getInstance(application, databaseName))
-            val syncer = Syncer(syncTimer, tronGridService, storage)
+            val accountInfoManager = AccountInfoManager(storage)
+            val transactionManager = TransactionManager()
+            val syncer = Syncer(address, syncTimer, tronGridService, accountInfoManager, transactionManager, storage)
 
-            return TronKit(syncer)
+            return TronKit(syncer, accountInfoManager)
         }
 
         private fun getDatabaseName(network: Network, walletId: String): String {

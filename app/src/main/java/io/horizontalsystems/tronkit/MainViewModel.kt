@@ -28,6 +28,12 @@ class MainViewModel(
         }
 
         viewModelScope.launch {
+            kit.trxBalanceFlow.collect {
+                balance = it.toBigDecimal().movePointLeft(6).toPlainString()
+            }
+        }
+
+        viewModelScope.launch {
             kit.lastBlockHeightFlow.collect {
                 lastBlockHeight = it
             }

@@ -1,6 +1,7 @@
 package io.horizontalsystems.tronkit.sync
 
 import android.util.Log
+import io.horizontalsystems.tronkit.Address
 import io.horizontalsystems.tronkit.TronKit.SyncError
 import io.horizontalsystems.tronkit.TronKit.SyncState
 import io.horizontalsystems.tronkit.database.Storage
@@ -12,8 +13,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class Syncer(
+    private val address: Address,
     private val syncTimer: SyncTimer,
     private val tronGridService: TronGridService,
+    private val accountInfoManager: AccountInfoManager,
+    private val transactionManager: TransactionManager,
     private val storage: Storage
 ) : SyncTimer.Listener {
 
@@ -73,6 +77,9 @@ class Syncer(
 
     private suspend fun syncLastBlockHeight() {
         val lastBlockHeight = tronGridService.getBlockHeight()
+
+        if (this.lastBlockHeight == lastBlockHeight) return
+
         storage.saveLastBlockHeight(lastBlockHeight)
 
         this.lastBlockHeight = lastBlockHeight
@@ -80,7 +87,7 @@ class Syncer(
         onUpdateLastBlockHeight(lastBlockHeight)
     }
 
-    private fun onUpdateLastBlockHeight(lastBlockHeight: Long) {
+    private suspend fun onUpdateLastBlockHeight(lastBlockHeight: Long) {
         Log.e("e", "onUpdateLastBlockHeight: $lastBlockHeight")
 
         syncAccountInfo()
@@ -89,11 +96,12 @@ class Syncer(
         syncState = SyncState.Synced()
     }
 
-    private fun syncTransactions() {
-        //TODO("not implemented")
+    private suspend fun syncAccountInfo() {
+        val accountInfo = tronGridService.getAccountInfo(address.base58)
+        accountInfoManager.handle(accountInfo)
     }
 
-    private fun syncAccountInfo() {
+    private suspend fun syncTransactions() {
         //TODO("not implemented")
     }
 }

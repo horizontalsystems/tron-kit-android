@@ -27,8 +27,9 @@ class TronGridService(
         Network.NileTestnet -> " https://nile.trongrid.io/"
     }
     private val logger = Logger.getLogger("TronGridService")
-    private val service: TronGridServiceAPI
-    private val gson: Gson
+    private val service: TronGridExtensionAPI
+    private val rpcService: TronGridRpcAPI
+    private val gsonRpc: Gson
 
     init {
         val loggingInterceptor = HttpLoggingInterceptor { message -> logger.info(message) }.setLevel(HttpLoggingInterceptor.Level.HEADERS)
@@ -45,49 +46,55 @@ class TronGridService(
             .addInterceptor(loggingInterceptor)
             .addInterceptor(headersInterceptor)
 
-        gson = GsonBuilder()
-            .setLenient()
-            .registerTypeAdapter(BigInteger::class.java, BigIntegerTypeAdapter())
-            .registerTypeAdapter(Long::class.java, LongTypeAdapter())
-            .registerTypeAdapter(object : TypeToken<Long?>() {}.type, LongTypeAdapter())
-            .registerTypeAdapter(Int::class.java, IntTypeAdapter())
-            .create()
+        gsonRpc = gson(isHex = true)
+        rpcService = retrofit(httpClient, baseUrl, gsonRpc).create(TronGridRpcAPI::class.java)
 
-        val retrofit = Retrofit.Builder()
-            .baseUrl(baseUrl)
-            .addConverterFactory(ScalarsConverterFactory.create())
-            .addConverterFactory(GsonConverterFactory.create(gson))
-            .client(httpClient.build())
-            .build()
-
-        service = retrofit.create(TronGridServiceAPI::class.java)
-    }
-
-    suspend fun getAccountInfo(address: String): AccountInfo {
-        val response = service.accountInfo(address)
-        val data = response.data.firstOrNull() ?: throw TronGridServiceError.NoAccountInfoData
-
-        return AccountInfo(balance = data.balance)
+        val gson = gson(isHex = false)
+        service = retrofit(httpClient, baseUrl, gson).create(TronGridExtensionAPI::class.java)
     }
 
     suspend fun getBlockHeight(): Long {
         val rpc = BlockNumberJsonRpc()
         rpc.id = currentRpcId.incrementAndGet()
 
-        val rpcResponse = service.rpc(gson.toJson(rpc))
-        return rpc.parseResponse(rpcResponse, gson)
+        val rpcResponse = rpcService.rpc(gsonRpc.toJson(rpc))
+        return rpc.parseResponse(rpcResponse, gsonRpc)
     }
 
-    private interface TronGridServiceAPI {
+    suspend fun getAccountInfo(address: String): AccountInfo {
+        val response = service.accountInfo(address)
+        val data = response.data.firstOrNull() ?: throw TronGridServiceError.NoAccountInfoData
+
+        return AccountInfo(data.balance)
+    }
+
+    private fun gson(isHex: Boolean): Gson = GsonBuilder()
+        .setLenient()
+        .registerTypeAdapter(BigInteger::class.java, BigIntegerTypeAdapter(isHex))
+        .registerTypeAdapter(Long::class.java, LongTypeAdapter(isHex))
+        .registerTypeAdapter(object : TypeToken<Long?>() {}.type, LongTypeAdapter(isHex))
+        .registerTypeAdapter(Int::class.java, IntTypeAdapter(isHex))
+        .create()
+
+    private fun retrofit(httpClient: OkHttpClient.Builder, baseUrl: String, gson: Gson): Retrofit = Retrofit.Builder()
+        .baseUrl(baseUrl)
+        .addConverterFactory(ScalarsConverterFactory.create())
+        .addConverterFactory(GsonConverterFactory.create(gson))
+        .client(httpClient.build())
+        .build()
+
+    private interface TronGridRpcAPI {
+        @POST("jsonrpc")
+        @Headers("Content-Type: application/json", "Accept: application/json")
+        suspend fun rpc(@Body jsonRpc: String): RpcResponse
+    }
+
+    private interface TronGridExtensionAPI {
 
         @GET("v1/accounts/{address}")
         suspend fun accountInfo(
             @Path("address") address: String
         ): AccountInfoResponse
-
-        @POST("jsonrpc")
-        @Headers("Content-Type: application/json", "Accept: application/json")
-        suspend fun rpc(@Body jsonRpc: String): RpcResponse
 
         data class AccountInfoResponse(
             val data: List<AccountInfoData>
@@ -98,7 +105,7 @@ class TronGridService(
             val address: String,
             val create_time: Long,
             val latest_opration_time: Long,
-            val balance: Long
+            val balance: BigInteger
         )
 
         data class AccountResource(
@@ -109,7 +116,7 @@ class TronGridService(
     }
 
     data class AccountInfo(
-        val balance: Long
+        val balance: BigInteger
     )
 
     sealed class TronGridServiceError : Throwable() {
