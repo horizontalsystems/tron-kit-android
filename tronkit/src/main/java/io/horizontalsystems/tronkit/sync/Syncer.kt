@@ -63,6 +63,7 @@ class Syncer(
             is SyncTimer.State.NotReady -> {
                 SyncState.NotSynced(state.error)
             }
+
             SyncTimer.State.Ready -> {
                 SyncState.Syncing()
             }
@@ -90,10 +91,15 @@ class Syncer(
     private suspend fun onUpdateLastBlockHeight(lastBlockHeight: Long) {
         Log.e("e", "onUpdateLastBlockHeight: $lastBlockHeight")
 
-        syncAccountInfo()
-        syncTransactions()
+        try {
+            syncAccountInfo()
+            syncTransactions()
 
-        syncState = SyncState.Synced()
+            syncState = SyncState.Synced()
+
+        } catch (error: Throwable) {
+            syncState = SyncState.NotSynced(error)
+        }
     }
 
     private suspend fun syncAccountInfo() {
@@ -102,6 +108,20 @@ class Syncer(
     }
 
     private suspend fun syncTransactions() {
-        //TODO("not implemented")
+        val syncBlockTimestamp = storage.getTransactionSyncBlockTimestamp() ?: 0
+        Log.e("e", "syncTransactions() syncBlockTimestamp: $syncBlockTimestamp")
+
+        var fingerprint: String? = null
+        do {
+            val response = tronGridService.getTransactions(address.base58, syncBlockTimestamp + 1000, 5, fingerprint)
+            val transactions = response.first
+            fingerprint = response.second
+
+            if (transactions.isNotEmpty()) {
+                transactionManager.handle(transactions)
+
+                storage.saveTransactionSyncTimestamp(transactions.last().blockTimestamp)
+            }
+        } while (fingerprint != null)
     }
 }

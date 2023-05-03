@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,6 +18,7 @@ import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState
 import io.horizontalsystems.tronkit.ui.theme.EmptyComposeMaterialTheme
+import java.util.Date
 
 class MainActivity : ComponentActivity() {
 
@@ -111,5 +114,29 @@ fun Balance(viewModel: MainViewModel) {
 
 @Composable
 fun Transactions(viewModel: MainViewModel) {
-
+    Column(
+        modifier = Modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxSize()
+    ) {
+        LazyColumn {
+            viewModel.transactions.forEach {
+                item {
+                    Column(modifier = Modifier.padding(bottom = 8.dp)) {
+                        Divider()
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SelectionContainer {
+                            Text(
+                                text = "TxID: ${it.txID}\n" +
+                                        "Type: ${it.type}\n" +
+                                        "BlockNumber: ${it.blockNumber}\n" +
+                                        "Timestamp: ${it.blockTimestamp}\n" +
+                                        "Date: ${Date(it.blockTimestamp).toLocaleString()}"
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

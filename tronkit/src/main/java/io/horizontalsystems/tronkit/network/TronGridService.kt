@@ -3,6 +3,8 @@ package io.horizontalsystems.tronkit.network
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
+import io.horizontalsystems.tronkit.models.AccountInfo
+import io.horizontalsystems.tronkit.models.Transaction
 import io.horizontalsystems.tronkit.rpc.*
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -68,6 +70,14 @@ class TronGridService(
         return AccountInfo(data.balance)
     }
 
+    suspend fun getTransactions(address: String, startBlockTimestamp: Long, limit: Int, fingerprint: String?): Pair<List<Transaction>, String?> {
+        val response = service.transactions(address, startBlockTimestamp, limit, fingerprint)
+        check(response.success) { "Response with success = false" }
+
+        val transactions = response.data.map { Transaction(it.txID, it.blockNumber, it.block_timestamp, it.raw_data.contract.firstOrNull()?.type) }
+        return Pair(transactions, response.meta.fingerprint)
+    }
+
     private fun gson(isHex: Boolean): Gson = GsonBuilder()
         .setLenient()
         .registerTypeAdapter(BigInteger::class.java, BigIntegerTypeAdapter(isHex))
@@ -96,6 +106,59 @@ class TronGridService(
             @Path("address") address: String
         ): AccountInfoResponse
 
+        @GET("v1/accounts/{address}/transactions")
+        suspend fun transactions(
+            @Path("address") address: String,
+            @Query("min_timestamp") startBlockTimestamp: Long,
+            @Query("limit") limit: Int,
+            @Query("fingerprint") fingerprint: String?,
+            @Query("order_by") orderBy: String = "block_timestamp,asc"
+        ): TransactionsResponse
+
+        data class TransactionsResponse(
+            val data: List<TransactionData>,
+            val success: Boolean,
+            val meta: Meta
+        )
+
+        data class Meta(
+            val at: Long,
+            val fingerprint: String?,
+            val page_size: Int
+        )
+
+        data class TransactionData(
+            val ret: List<TransactionRet>,
+            val withdraw_amount: Long,
+            val txID: String,
+            val net_usage: Int,
+            val raw_data_hex: String,
+            val net_fee: Int,
+            val energy_usage: Int,
+            val blockNumber: Long,
+            val block_timestamp: Long,
+            val energy_fee: Int,
+            val energy_usage_total: Int,
+            val raw_data: RawData
+        )
+
+        data class RawData(
+            val contract: List<Contract>,
+            val ref_block_bytes: String,
+            val ref_block_hash: String,
+            val expiration: Long,
+            val timestamp: Long
+        )
+
+        data class Contract(
+            val type: String
+        )
+
+        data class TransactionRet(
+            val contractRet: String,
+            val fee: Long
+        )
+
         data class AccountInfoResponse(
             val data: List<AccountInfoData>
         )
@@ -114,10 +177,6 @@ class TronGridService(
             val energy_window_size: Int
         )
     }
-
-    data class AccountInfo(
-        val balance: BigInteger
-    )
 
     sealed class TronGridServiceError : Throwable() {
         object NoAccountInfoData : TronGridServiceError()

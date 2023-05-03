@@ -7,13 +7,20 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import io.horizontalsystems.tronkit.models.Balance
 import io.horizontalsystems.tronkit.models.LastBlockHeight
+import io.horizontalsystems.tronkit.models.Transaction
+import io.horizontalsystems.tronkit.models.TransactionSyncState
 
-@Database(entities = [LastBlockHeight::class, Balance::class], version = 1, exportSchema = false)
+@Database(
+    entities = [LastBlockHeight::class, Balance::class, TransactionSyncState::class, Transaction::class],
+    version = 1,
+    exportSchema = false
+)
 @TypeConverters(RoomTypeConverters::class)
 abstract class MainDatabase : RoomDatabase() {
 
     abstract fun lastBlockHeightDao(): LastBlockHeightDao
     abstract fun balanceDao(): BalanceDao
+    abstract fun transactionDao(): TransactionDao
 
     companion object {
         fun getInstance(context: Context, databaseName: String): MainDatabase {

@@ -1,11 +1,13 @@
 package io.horizontalsystems.tronkit
 
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import io.horizontalsystems.tronkit.models.Transaction
 import io.horizontalsystems.tronkit.network.Network
 import kotlinx.coroutines.launch
 
@@ -13,13 +15,16 @@ class MainViewModel(
     private val kit: TronKit
 ) : ViewModel() {
 
-    var balance: String by mutableStateOf("N/A")
+    var balance: String by mutableStateOf(kit.trxBalance.toBigDecimal().movePointLeft(6).toPlainString())
         private set
 
     var lastBlockHeight: Long by mutableStateOf(kit.lastBlockHeight)
         private set
 
     var syncState: TronKit.SyncState by mutableStateOf(kit.syncState)
+        private set
+
+    var transactions: List<Transaction> by mutableStateOf(listOf())
         private set
 
     init {
@@ -42,6 +47,13 @@ class MainViewModel(
         viewModelScope.launch {
             kit.syncStateFlow.collect {
                 syncState = it
+            }
+        }
+
+        viewModelScope.launch {
+            kit.transactionsFlow.collect {
+                Log.e("e", "transactionsFlow: ${it.size}")
+                transactions = it
             }
         }
     }

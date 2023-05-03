@@ -5,6 +5,7 @@ import io.horizontalsystems.hdwalletkit.Mnemonic
 import io.horizontalsystems.tronkit.crypto.InternalBouncyCastleProvider
 import io.horizontalsystems.tronkit.database.MainDatabase
 import io.horizontalsystems.tronkit.database.Storage
+import io.horizontalsystems.tronkit.models.Transaction
 import io.horizontalsystems.tronkit.network.ConnectionManager
 import io.horizontalsystems.tronkit.network.Network
 import io.horizontalsystems.tronkit.network.TronGridService
@@ -23,7 +24,8 @@ import java.util.Objects
 
 class TronKit(
     private val syncer: Syncer,
-    private val accountInfoManager: AccountInfoManager
+    private val accountInfoManager: AccountInfoManager,
+    private val transactionManager: TransactionManager
 ) {
     private var started = false
     private var scope: CoroutineScope? = null
@@ -45,6 +47,9 @@ class TronKit(
 
     val syncStateFlow: StateFlow<SyncState>
         get() = syncer.syncStateFlow
+
+    val transactionsFlow: StateFlow<List<Transaction>>
+        get() = transactionManager.transactionsFlow
 
     fun start() {
         if (started) return
@@ -135,10 +140,10 @@ class TronKit(
             val databaseName = getDatabaseName(network, walletId)
             val storage = Storage(MainDatabase.getInstance(application, databaseName))
             val accountInfoManager = AccountInfoManager(storage)
-            val transactionManager = TransactionManager()
+            val transactionManager = TransactionManager(storage)
             val syncer = Syncer(address, syncTimer, tronGridService, accountInfoManager, transactionManager, storage)
 
-            return TronKit(syncer, accountInfoManager)
+            return TronKit(syncer, accountInfoManager, transactionManager)
         }
 
         private fun getDatabaseName(network: Network, walletId: String): String {
