@@ -10,7 +10,7 @@ object AddressHandler {
     private const val addressSize = 21
 
     @Throws(AddressValidationException::class)
-    fun validate(address: ByteArray, network: Network) {
+    fun validate(address: ByteArray, network: Network = Network.Mainnet) {
         if (address.size != addressSize) {
             throw AddressValidationException.InvalidAddressLength(addressSize, address.size)
 

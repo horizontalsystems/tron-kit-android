@@ -94,10 +94,14 @@ class Syncer(
         try {
             syncAccountInfo()
             syncTransactions()
+            syncContractTransactions()
+
+            transactionManager.process()
 
             syncState = SyncState.Synced()
 
         } catch (error: Throwable) {
+            error.printStackTrace()
             syncState = SyncState.NotSynced(error)
         }
     }
@@ -113,14 +117,32 @@ class Syncer(
 
         var fingerprint: String? = null
         do {
-            val response = tronGridService.getTransactions(address.base58, syncBlockTimestamp + 1000, 5, fingerprint)
-            val transactions = response.first
+            val response = tronGridService.getTransactions(address.base58, syncBlockTimestamp + 1000, fingerprint)
+            val transactionData = response.first
             fingerprint = response.second
 
-            if (transactions.isNotEmpty()) {
-                transactionManager.handle(transactions)
+            if (transactionData.isNotEmpty()) {
+                transactionManager.saveTransactionData(transactionData)
 
-                storage.saveTransactionSyncTimestamp(transactions.last().blockTimestamp)
+                storage.saveTransactionSyncTimestamp(transactionData.last().block_timestamp)
+            }
+        } while (fingerprint != null)
+    }
+
+    private suspend fun syncContractTransactions() {
+        val syncBlockTimestamp = storage.getContractTransactionSyncBlockTimestamp() ?: 0
+        Log.e("e", "syncContractTransactions() syncBlockTimestamp: $syncBlockTimestamp")
+
+        var fingerprint: String? = null
+        do {
+            val response = tronGridService.getContractTransactions(address.base58, syncBlockTimestamp + 1000, fingerprint)
+            val transactionData = response.first
+            fingerprint = response.second
+
+            if (transactionData.isNotEmpty()) {
+                transactionManager.saveContractTransactionData(transactionData)
+
+                storage.saveContractTransactionSyncTimestamp(transactionData.last().block_timestamp)
             }
         } while (fingerprint != null)
     }

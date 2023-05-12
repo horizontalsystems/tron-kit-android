@@ -7,5 +7,5 @@ enum class Network(
 ) {
     Mainnet(1, 195, 0x41.toByte()),
     ShastaTestnet(2, 1, 0xa0.toByte()),
-    NileTestnet(3, 1, 0xa0.toByte())
+    NileTestnet(3, 195, 0x41.toByte())
 }

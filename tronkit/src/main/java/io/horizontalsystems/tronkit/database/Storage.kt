@@ -1,9 +1,11 @@
 package io.horizontalsystems.tronkit.database
 
 import io.horizontalsystems.tronkit.models.Balance
+import io.horizontalsystems.tronkit.models.InternalTransaction
 import io.horizontalsystems.tronkit.models.LastBlockHeight
 import io.horizontalsystems.tronkit.models.Transaction
 import io.horizontalsystems.tronkit.models.TransactionSyncState
+import io.horizontalsystems.tronkit.models.Trc20Event
 import java.math.BigInteger
 
 class Storage(
@@ -34,12 +36,41 @@ class Storage(
         database.transactionDao().insert(TransactionSyncState(TransactionSourceType.Native.id, timestamp))
     }
 
+    fun getContractTransactionSyncBlockTimestamp(): Long? {
+        val syncState = database.transactionDao().getTransactionSyncState(TransactionSourceType.Contract.id)
+        return syncState?.blockTimestamp
+    }
+
+    fun saveContractTransactionSyncTimestamp(timestamp: Long) {
+        database.transactionDao().insert(TransactionSyncState(TransactionSourceType.Contract.id, timestamp))
+    }
+
     fun getTransactions(): List<Transaction> {
         return database.transactionDao().getTransactions()
     }
 
     fun saveTransactions(transactions: List<Transaction>) {
-        database.transactionDao().insert(transactions)
+        database.transactionDao().insertTransactions(transactions)
+    }
+
+    fun saveTransactionsIfNotExists(transactions: List<Transaction>) {
+        database.transactionDao().insertTransactionsIfNotExists(transactions)
+    }
+
+    fun getInternalTransactions(): List<InternalTransaction> {
+        return database.transactionDao().getInternalTransactions()
+    }
+
+    fun saveInternalTransactions(transactions: List<InternalTransaction>) {
+        database.transactionDao().insertInternalTransactions(transactions)
+    }
+
+    fun getTrc20Events(): List<Trc20Event> {
+        return database.transactionDao().getTrc20Events()
+    }
+
+    fun saveTrc20Events(trc20Events: List<Trc20Event>) {
+        database.transactionDao().insertTrc20Events(trc20Events)
     }
 
     private fun trxBalanceId() = "TRX"
@@ -47,7 +78,7 @@ class Storage(
     private fun trc20BalanceId(contractAddress: String) = "TRC20|$contractAddress"
 
     private enum class TransactionSourceType(val id: String) {
-        Native("native"), Trc20("trc20")
+        Native("native"), Contract("contract")
     }
 
 }

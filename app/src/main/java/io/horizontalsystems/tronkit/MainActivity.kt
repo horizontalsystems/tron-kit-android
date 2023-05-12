@@ -127,11 +127,11 @@ fun Transactions(viewModel: MainViewModel) {
                         Spacer(modifier = Modifier.height(8.dp))
                         SelectionContainer {
                             Text(
-                                text = "TxID: ${it.txID}\n" +
-                                        "Type: ${it.type}\n" +
+                                text =  "TxID: ${it.hash.toRawHexString()}\n" +
+                                        "Type: ${it.contract?.javaClass?.simpleName}\n" +
                                         "BlockNumber: ${it.blockNumber}\n" +
-                                        "Timestamp: ${it.blockTimestamp}\n" +
-                                        "Date: ${Date(it.blockTimestamp).toLocaleString()}"
+                                        "Timestamp: ${it.timestamp}\n" +
+                                        "Date: ${Date(it.timestamp).toLocaleString()}"
                             )
                         }
                     }

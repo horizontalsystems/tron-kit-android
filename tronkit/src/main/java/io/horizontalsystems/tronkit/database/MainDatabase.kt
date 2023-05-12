@@ -6,12 +6,21 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import io.horizontalsystems.tronkit.models.Balance
+import io.horizontalsystems.tronkit.models.InternalTransaction
 import io.horizontalsystems.tronkit.models.LastBlockHeight
 import io.horizontalsystems.tronkit.models.Transaction
 import io.horizontalsystems.tronkit.models.TransactionSyncState
+import io.horizontalsystems.tronkit.models.Trc20Event
 
 @Database(
-    entities = [LastBlockHeight::class, Balance::class, TransactionSyncState::class, Transaction::class],
+    entities = [
+        LastBlockHeight::class,
+        Balance::class,
+        TransactionSyncState::class,
+        Transaction::class,
+        InternalTransaction::class,
+        Trc20Event::class
+    ],
     version = 1,
     exportSchema = false
 )

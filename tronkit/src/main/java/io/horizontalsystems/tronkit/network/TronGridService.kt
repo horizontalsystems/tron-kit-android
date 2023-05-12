@@ -2,9 +2,10 @@ package io.horizontalsystems.tronkit.network
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
+import io.horizontalsystems.tronkit.Address
 import io.horizontalsystems.tronkit.models.AccountInfo
-import io.horizontalsystems.tronkit.models.Transaction
 import io.horizontalsystems.tronkit.rpc.*
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -32,6 +33,7 @@ class TronGridService(
     private val service: TronGridExtensionAPI
     private val rpcService: TronGridRpcAPI
     private val gsonRpc: Gson
+    private val gson: Gson
 
     init {
         val loggingInterceptor = HttpLoggingInterceptor { message -> logger.info(message) }.setLevel(HttpLoggingInterceptor.Level.HEADERS)
@@ -51,7 +53,7 @@ class TronGridService(
         gsonRpc = gson(isHex = true)
         rpcService = retrofit(httpClient, baseUrl, gsonRpc).create(TronGridRpcAPI::class.java)
 
-        val gson = gson(isHex = false)
+        gson = gson(isHex = false)
         service = retrofit(httpClient, baseUrl, gson).create(TronGridExtensionAPI::class.java)
     }
 
@@ -65,17 +67,39 @@ class TronGridService(
 
     suspend fun getAccountInfo(address: String): AccountInfo {
         val response = service.accountInfo(address)
-        val data = response.data.firstOrNull() ?: throw TronGridServiceError.NoAccountInfoData
+        val data = response.data.firstOrNull() //TODO handle inactive account // ?: throw TronGridServiceError.NoAccountInfoData
 
-        return AccountInfo(data.balance)
+        return AccountInfo(data?.balance ?: BigInteger.ZERO)
     }
 
-    suspend fun getTransactions(address: String, startBlockTimestamp: Long, limit: Int, fingerprint: String?): Pair<List<Transaction>, String?> {
-        val response = service.transactions(address, startBlockTimestamp, limit, fingerprint)
+    suspend fun getTransactions(
+        address: String,
+        startBlockTimestamp: Long,
+        fingerprint: String?
+    ): Pair<List<TransactionData>, String?> {
+        val response = service.transactions(address, startBlockTimestamp, fingerprint)
         check(response.success) { "Response with success = false" }
 
-        val transactions = response.data.map { Transaction(it.txID, it.blockNumber, it.block_timestamp, it.raw_data.contract.firstOrNull()?.type) }
-        return Pair(transactions, response.meta.fingerprint)
+        val transactionData = response.data.map {
+            if (it.has("internal_tx_id")) {
+                gson.fromJson(it, InternalTransactionData::class.java)
+            } else {
+                gson.fromJson(it, RegularTransactionData::class.java)
+            }
+        }
+
+        return Pair(transactionData, response.meta.fingerprint)
+    }
+
+    suspend fun getContractTransactions(
+        address: String,
+        startBlockTimestamp: Long,
+        fingerprint: String?
+    ): Pair<List<ContractTransactionData>, String?> {
+        val response = service.contractTransactions(address, startBlockTimestamp, fingerprint)
+        check(response.success) { "Response with success = false" }
+
+        return Pair(response.data, response.meta.fingerprint)
     }
 
     private fun gson(isHex: Boolean): Gson = GsonBuilder()
@@ -100,6 +124,10 @@ class TronGridService(
     }
 
     private interface TronGridExtensionAPI {
+        companion object {
+            private const val limit = 200
+            private const val orderBy = "block_timestamp,asc"
+        }
 
         @GET("v1/accounts/{address}")
         suspend fun accountInfo(
@@ -110,75 +138,173 @@ class TronGridService(
         suspend fun transactions(
             @Path("address") address: String,
             @Query("min_timestamp") startBlockTimestamp: Long,
-            @Query("limit") limit: Int,
             @Query("fingerprint") fingerprint: String?,
-            @Query("order_by") orderBy: String = "block_timestamp,asc"
+            @Query("limit") limit: Int = Companion.limit,
+            @Query("order_by") orderBy: String = Companion.orderBy
         ): TransactionsResponse
 
-        data class TransactionsResponse(
-            val data: List<TransactionData>,
-            val success: Boolean,
-            val meta: Meta
-        )
-
-        data class Meta(
-            val at: Long,
-            val fingerprint: String?,
-            val page_size: Int
-        )
-
-        data class TransactionData(
-            val ret: List<TransactionRet>,
-            val withdraw_amount: Long,
-            val txID: String,
-            val net_usage: Int,
-            val raw_data_hex: String,
-            val net_fee: Int,
-            val energy_usage: Int,
-            val blockNumber: Long,
-            val block_timestamp: Long,
-            val energy_fee: Int,
-            val energy_usage_total: Int,
-            val raw_data: RawData
-        )
-
-        data class RawData(
-            val contract: List<Contract>,
-            val ref_block_bytes: String,
-            val ref_block_hash: String,
-            val expiration: Long,
-            val timestamp: Long
-        )
-
-        data class Contract(
-            val type: String
-        )
-
-        data class TransactionRet(
-            val contractRet: String,
-            val fee: Long
-        )
-
-        data class AccountInfoResponse(
-            val data: List<AccountInfoData>
-        )
-
-        data class AccountInfoData(
-            val account_resource: AccountResource,
-            val address: String,
-            val create_time: Long,
-            val latest_opration_time: Long,
-            val balance: BigInteger
-        )
-
-        data class AccountResource(
-            val energy_usage: Int,
-            val latest_consume_time_for_energy: Long,
-            val energy_window_size: Int
-        )
+        @GET("v1/accounts/{address}/transactions/trc20")
+        suspend fun contractTransactions(
+            @Path("address") address: String,
+            @Query("min_timestamp") startBlockTimestamp: Long,
+            @Query("fingerprint") fingerprint: String?,
+            @Query("limit") limit: Int = Companion.limit,
+            @Query("order_by") orderBy: String = Companion.orderBy
+        ): ContractTransactionsResponse
     }
 
     sealed class TronGridServiceError : Throwable() {
         object NoAccountInfoData : TronGridServiceError()
     }
 }
+
+data class ContractTransactionsResponse(
+    val data: List<ContractTransactionData>,
+    val success: Boolean,
+    val meta: Meta
+)
+
+data class ContractTransactionData(
+    val transaction_id: String,
+    val token_info: TokenInfo,
+    val block_timestamp: Long,
+    val from: String,
+    val to: String,
+    val type: String,
+    val value: String
+)
+
+data class TokenInfo(
+    val symbol: String,
+    val address: String,
+    val decimals: Int,
+    val name: String
+)
+
+data class TransactionsResponse(
+    val data: List<JsonObject>,
+    val success: Boolean,
+    val meta: Meta
+)
+
+data class Meta(
+    val at: Long,
+    val fingerprint: String?,
+    val page_size: Int
+)
+
+sealed class TransactionData(val block_timestamp: Long)
+
+class InternalTransactionData(
+    block_timestamp: Long,
+    val internal_tx_id: String,
+    val data: Map<String, Any>,
+    val to_address: String,
+    val tx_id: String,
+    val from_address: String,
+) : TransactionData(block_timestamp)
+
+class RegularTransactionData(
+    block_timestamp: Long,
+    val ret: List<TransactionRet>,
+    val withdraw_amount: Long?,
+    val txID: String,
+    val net_usage: Long,
+    val raw_data_hex: String,
+    val net_fee: Long,
+    val energy_usage: Long,
+    val blockNumber: Long,
+    val energy_fee: Long,
+    val energy_usage_total: Long,
+    val raw_data: RawData
+) : TransactionData(block_timestamp)
+
+data class RawData(
+    val contract: List<ContractRaw>,
+    val ref_block_bytes: String,
+    val ref_block_hash: String,
+    val expiration: Long,
+    val timestamp: Long
+)
+
+data class ContractRaw(
+    val type: String,
+    val parameter: Parameter
+) {
+    val amount: Long?
+        get() = parameter.value.amount
+
+    val ownerAddress: Address?
+        get() = parameter.value.owner_address?.let { Address.fromHex(it) }
+
+    val toAddress: Address?
+        get() = parameter.value.to_address?.let { Address.fromHex(it) }
+
+    val assetName: String?
+        get() = parameter.value.asset_name
+
+    val withdrawAmount: Long?
+        get() = parameter.value.withdraw_amount
+
+    val data: String?
+        get() = parameter.value.data
+
+    val contractAddress: Address?
+        get() = parameter.value.contract_address?.let { Address.fromHex(it) }
+}
+
+data class Parameter(
+    val value: Value,
+    val type_url: String
+)
+
+data class Value(
+    val amount: Long?,
+    val owner_address: String?,
+    val to_address: String?,
+    val asset_name: String?,
+    val withdraw_amount: Long?,
+    val data: String?,
+    val contract_address: String?,
+
+    val total_supply: Long?,
+    val precision: Int?,
+    val name: String?,
+    val description: String?,
+    val abbr: String?,
+    val url: String?,
+
+    val resource: String?,
+    val unfreeze_balance: Long?,
+    val frozen_balance: Long?,
+
+    val votes: List<Vote>?
+)
+
+data class Vote(
+    val vote_address: String,
+    val vote_count: Long
+)
+
+data class TransactionRet(
+    val contractRet: String,
+    val fee: Long
+)
+
+data class AccountInfoResponse(
+    val data: List<AccountInfoData>
+)
+
+data class AccountInfoData(
+    val account_resource: AccountResource,
+    val address: String,
+    val create_time: Long,
+    val latest_opration_time: Long,
+    val balance: BigInteger
+)
+
+data class AccountResource(
+    val energy_usage: Int,
+    val latest_consume_time_for_energy: Long,
+    val energy_window_size: Int
+)

@@ -1,6 +1,7 @@
 package io.horizontalsystems.tronkit
 
 import android.app.Application
+import com.google.gson.Gson
 import io.horizontalsystems.hdwalletkit.Mnemonic
 import io.horizontalsystems.tronkit.crypto.InternalBouncyCastleProvider
 import io.horizontalsystems.tronkit.database.MainDatabase
@@ -140,7 +141,7 @@ class TronKit(
             val databaseName = getDatabaseName(network, walletId)
             val storage = Storage(MainDatabase.getInstance(application, databaseName))
             val accountInfoManager = AccountInfoManager(storage)
-            val transactionManager = TransactionManager(storage)
+            val transactionManager = TransactionManager(storage, Gson())
             val syncer = Syncer(address, syncTimer, tronGridService, accountInfoManager, transactionManager, storage)
 
             return TronKit(syncer, accountInfoManager, transactionManager)

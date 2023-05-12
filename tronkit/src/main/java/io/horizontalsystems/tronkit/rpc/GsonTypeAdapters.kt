@@ -100,7 +100,7 @@ class AddressTypeAdapter : TypeAdapter<Address?>() {
             return null
         }
         return try {
-            Address(reader.nextString())
+            Address.fromHex(reader.nextString())
         } catch (error: Throwable) {
             null
         }
