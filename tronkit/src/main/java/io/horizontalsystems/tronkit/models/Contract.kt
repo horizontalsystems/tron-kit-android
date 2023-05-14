@@ -81,6 +81,11 @@ sealed class Contract {
         )
     }
 
+    //Create Smart Contract
+    data class CreateSmartContract(
+        val ownerAddress: Address
+    ) : Contract()
+
     companion object {
         private val gson: Gson = Gson()
 
@@ -167,7 +172,12 @@ sealed class Contract {
                         )
                     }
 
+                    "CreateSmartContract" -> {
+                        CreateSmartContract(contract.ownerAddress!!)
+                    }
+
                     else -> {
+                        Log.e("e", "unknown contract: $contractsJson")
                         Unknown(contractsJson)
                     }
                 }

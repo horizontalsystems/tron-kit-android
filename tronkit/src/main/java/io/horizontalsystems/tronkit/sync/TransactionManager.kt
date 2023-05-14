@@ -37,53 +37,57 @@ class TransactionManager(
         val internalTransactions = mutableListOf<InternalTransaction>()
 
         transactionData.forEach { txData ->
-            when (txData) {
-                is InternalTransactionData -> {
-                    val callValueDouble = (txData.data["call_value"] as? Map<String, Any>)?.get("_") as? Double
-                    val value = callValueDouble?.toBigDecimal()?.toBigInteger()?.toLong()
-                    Log.e("e", "internal call_value: $value")
+            try {
+                when (txData) {
+                    is InternalTransactionData -> {
+                        val callValueDouble = (txData.data["call_value"] as? Map<String, Any>)?.get("_") as? Double
+                        val value = callValueDouble?.toBigDecimal()?.toBigInteger()?.toLong()
+                        Log.e("e", "internal call_value: $value")
 
-                    if (value != null) {
-                        internalTransactions.add(
-                            InternalTransaction(
-                                transactionHash = txData.tx_id.hexStringToByteArray(),
-                                timestamp = txData.block_timestamp,
-                                from = Address.fromHex(txData.from_address),
-                                to = Address.fromHex(txData.to_address),
-                                value = value,
-                                internalTxId = txData.internal_tx_id
-                            )
-                        )
-
-                        storage.saveTransactionsIfNotExists(
-                            listOf(
-                                Transaction(
-                                    hash = txData.tx_id.hexStringToByteArray(),
-                                    timestamp = txData.block_timestamp
+                        if (value != null) {
+                            internalTransactions.add(
+                                InternalTransaction(
+                                    transactionHash = txData.tx_id.hexStringToByteArray(),
+                                    timestamp = txData.block_timestamp,
+                                    from = Address.fromHex(txData.from_address),
+                                    to = Address.fromHex(txData.to_address),
+                                    value = value,
+                                    internalTxId = txData.internal_tx_id
                                 )
+                            )
+
+                            storage.saveTransactionsIfNotExists(
+                                listOf(
+                                    Transaction(
+                                        hash = txData.tx_id.hexStringToByteArray(),
+                                        timestamp = txData.block_timestamp
+                                    )
+                                )
+                            )
+                        }
+                    }
+
+                    is RegularTransactionData -> {
+                        val isFailed = txData.ret.any { !it.contractRet.equals("SUCCESS", ignoreCase = true) }
+                        transactions.add(
+                            Transaction(
+                                hash = txData.txID.hexStringToByteArray(),
+                                isFailed = isFailed,
+                                blockNumber = txData.blockNumber,
+                                timestamp = txData.block_timestamp,
+                                fee = txData.ret.firstOrNull()?.fee,
+                                netUsage = txData.net_usage,
+                                netFee = txData.net_fee,
+                                energyUsage = txData.energy_usage,
+                                energyFee = txData.energy_fee,
+                                energyUsageTotal = txData.energy_usage_total,
+                                contractsRaw = gson.toJson(contractsWithWithdrawAmount(txData))
                             )
                         )
                     }
                 }
-
-                is RegularTransactionData -> {
-                    val isFailed = txData.ret.any { !it.contractRet.equals("SUCCESS", ignoreCase = true) }
-                    transactions.add(
-                        Transaction(
-                            hash = txData.txID.hexStringToByteArray(),
-                            isFailed = isFailed,
-                            blockNumber = txData.blockNumber,
-                            timestamp = txData.block_timestamp,
-                            fee = txData.ret.firstOrNull()?.fee,
-                            netUsage = txData.net_usage,
-                            netFee = txData.net_fee,
-                            energyUsage = txData.energy_usage,
-                            energyFee = txData.energy_fee,
-                            energyUsageTotal = txData.energy_usage_total,
-                            contractsRaw = gson.toJson(contractsWithWithdrawAmount(txData))
-                        )
-                    )
-                }
+            } catch (error: Throwable) {
+                Log.e("e", "TransactionData parsing error", error)
             }
         }
 
@@ -117,27 +121,31 @@ class TransactionManager(
         val transactions = mutableListOf<Transaction>()
 
         transactionData.forEach {
-            trc20Events.add(
-                Trc20Event(
-                    it.transaction_id.hexStringToByteArray(),
-                    it.block_timestamp,
-                    contractAddress = Address.fromBase58(it.token_info.address),
-                    from = Address.fromBase58(it.from),
-                    to = Address.fromBase58(it.to),
-                    value = BigInteger(it.value),
-                    type = it.type,
-                    tokenName = it.token_info.name,
-                    tokenSymbol = it.token_info.symbol,
-                    tokenDecimal = it.token_info.decimals
+            try {
+                transactions.add(
+                    Transaction(
+                        hash = it.transaction_id.hexStringToByteArray(),
+                        timestamp = it.block_timestamp
+                    )
                 )
-            )
 
-            transactions.add(
-                Transaction(
-                    hash = it.transaction_id.hexStringToByteArray(),
-                    timestamp = it.block_timestamp
+                trc20Events.add(
+                    Trc20Event(
+                        it.transaction_id.hexStringToByteArray(),
+                        it.block_timestamp,
+                        contractAddress = Address.fromBase58(it.token_info.address),
+                        from = Address.fromBase58(it.from),
+                        to = Address.fromBase58(it.to),
+                        value = BigInteger(it.value),
+                        type = it.type,
+                        tokenName = it.token_info.name,
+                        tokenSymbol = it.token_info.symbol,
+                        tokenDecimal = it.token_info.decimals
+                    )
                 )
-            )
+            } catch (error: Throwable) {
+                Log.e("e", "Contract TransactionData parsing error: ${it.transaction_id}", error)
+            }
         }
 
         storage.saveTrc20Events(trc20Events)
