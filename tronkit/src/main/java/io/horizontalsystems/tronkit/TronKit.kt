@@ -6,7 +6,9 @@ import io.horizontalsystems.hdwalletkit.Mnemonic
 import io.horizontalsystems.tronkit.crypto.InternalBouncyCastleProvider
 import io.horizontalsystems.tronkit.database.MainDatabase
 import io.horizontalsystems.tronkit.database.Storage
-import io.horizontalsystems.tronkit.models.Transaction
+import io.horizontalsystems.tronkit.decoration.DecorationManager
+import io.horizontalsystems.tronkit.decoration.trc20.Trc20TransactionDecorator
+import io.horizontalsystems.tronkit.models.FullTransaction
 import io.horizontalsystems.tronkit.network.ConnectionManager
 import io.horizontalsystems.tronkit.network.Network
 import io.horizontalsystems.tronkit.network.TronGridService
@@ -17,6 +19,7 @@ import io.horizontalsystems.tronkit.sync.TransactionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.math.BigInteger
@@ -49,7 +52,7 @@ class TronKit(
     val syncStateFlow: StateFlow<SyncState>
         get() = syncer.syncStateFlow
 
-    val transactionsFlow: StateFlow<List<Transaction>>
+    val transactionsFlow: StateFlow<Pair<List<FullTransaction>, Boolean>>
         get() = transactionManager.transactionsFlow
 
     fun start() {
@@ -67,6 +70,18 @@ class TronKit(
         syncer.stop()
 
         scope?.cancel()
+    }
+
+    fun getFullTransactionsFlow(tags: List<List<String>>): Flow<List<FullTransaction>> {
+        return transactionManager.getFullTransactionsFlow(tags)
+    }
+
+    suspend fun getFullTransactions(tags: List<List<String>>, fromHash: ByteArray? = null, limit: Int? = null): List<FullTransaction> {
+        return transactionManager.getFullTransactions(tags, fromHash, limit)
+    }
+
+    fun getFullTransactions(hashes: List<ByteArray>): List<FullTransaction> {
+        return transactionManager.getFullTransactions(hashes)
     }
 
     sealed class SyncState {
@@ -141,7 +156,10 @@ class TronKit(
             val databaseName = getDatabaseName(network, walletId)
             val storage = Storage(MainDatabase.getInstance(application, databaseName))
             val accountInfoManager = AccountInfoManager(storage)
-            val transactionManager = TransactionManager(storage, Gson())
+            val decorationManager = DecorationManager(storage).apply {
+                addTransactionDecorator(Trc20TransactionDecorator(address))
+            }
+            val transactionManager = TransactionManager(address, storage, decorationManager, Gson())
             val syncer = Syncer(address, syncTimer, tronGridService, accountInfoManager, transactionManager, storage)
 
             return TronKit(syncer, accountInfoManager, transactionManager)

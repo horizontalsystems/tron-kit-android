@@ -12,6 +12,15 @@ fun ByteArray?.toRawHexString(): String {
     } ?: ""
 }
 
+fun ByteArray?.toBigInteger(): BigInteger {
+    return if (this == null || this.isEmpty()) BigInteger.ZERO else BigInteger(1, this)
+}
+
+
+fun ByteArray?.toInt(): Int {
+    return if (this == null || this.isEmpty()) 0 else BigInteger(1, this).toInt()
+}
+
 fun ByteArray?.toHexString(): String {
     val rawHex = this?.toRawHexString() ?: return ""
     return "0x$rawHex"

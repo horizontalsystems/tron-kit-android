@@ -92,11 +92,14 @@ class Syncer(
         Log.e("e", "onUpdateLastBlockHeight: $lastBlockHeight")
 
         try {
-            syncAccountInfo()
-            syncTransactions()
-            syncContractTransactions()
+            val transactionSyncTimestamp = storage.getTransactionSyncBlockTimestamp() ?: 0
+            val contractTransactionSyncTimestamp = storage.getContractTransactionSyncBlockTimestamp() ?: 0
 
-            transactionManager.process()
+            syncAccountInfo()
+            syncTransactions(transactionSyncTimestamp)
+            syncContractTransactions(contractTransactionSyncTimestamp)
+
+            transactionManager.process(initial = transactionSyncTimestamp == 0L || contractTransactionSyncTimestamp == 0L)
 
             syncState = SyncState.Synced()
 
@@ -111,8 +114,7 @@ class Syncer(
         accountInfoManager.handle(accountInfo)
     }
 
-    private suspend fun syncTransactions() {
-        val syncBlockTimestamp = storage.getTransactionSyncBlockTimestamp() ?: 0
+    private suspend fun syncTransactions(syncBlockTimestamp: Long) {
         Log.e("e", "syncTransactions() syncBlockTimestamp: $syncBlockTimestamp")
 
         var fingerprint: String? = null
@@ -129,8 +131,7 @@ class Syncer(
         } while (fingerprint != null)
     }
 
-    private suspend fun syncContractTransactions() {
-        val syncBlockTimestamp = storage.getContractTransactionSyncBlockTimestamp() ?: 0
+    private suspend fun syncContractTransactions(syncBlockTimestamp: Long) {
         Log.e("e", "syncContractTransactions() syncBlockTimestamp: $syncBlockTimestamp")
 
         var fingerprint: String? = null

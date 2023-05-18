@@ -1,11 +1,13 @@
 package io.horizontalsystems.tronkit.database
 
+import androidx.sqlite.db.SimpleSQLiteQuery
 import io.horizontalsystems.tronkit.models.Balance
 import io.horizontalsystems.tronkit.models.InternalTransaction
 import io.horizontalsystems.tronkit.models.LastBlockHeight
 import io.horizontalsystems.tronkit.models.Transaction
 import io.horizontalsystems.tronkit.models.TransactionSyncState
-import io.horizontalsystems.tronkit.models.Trc20Event
+import io.horizontalsystems.tronkit.models.TransactionTag
+import io.horizontalsystems.tronkit.models.Trc20EventRecord
 import java.math.BigInteger
 
 class Storage(
@@ -45,6 +47,13 @@ class Storage(
         database.transactionDao().insert(TransactionSyncState(TransactionSourceType.Contract.id, timestamp))
     }
 
+    fun getUnprocessedTransactions(): List<Transaction> {
+        return database.transactionDao().getUnprocessedTransactions()
+    }
+
+    fun getTransactions(hashes: List<ByteArray>): List<Transaction> =
+        database.transactionDao().getTransactions(hashes)
+
     fun getTransactions(): List<Transaction> {
         return database.transactionDao().getTransactions()
     }
@@ -57,20 +66,86 @@ class Storage(
         database.transactionDao().insertTransactionsIfNotExists(transactions)
     }
 
+    suspend fun getTransactionsBefore(tags: List<List<String>>, hash: ByteArray?, limit: Int?): List<Transaction> {
+        val whereConditions = mutableListOf<String>()
+
+        if (tags.isNotEmpty()) {
+            val tagConditions = tags
+                .mapIndexed { index, andTags ->
+                    val tagsString = andTags.joinToString(", ") { "'$it'" }
+                    "transaction_tags_$index.name IN ($tagsString)"
+                }
+                .joinToString(" AND ")
+
+            whereConditions.add(tagConditions)
+        }
+
+        hash?.let { database.transactionDao().getTransaction(hash) }?.let { fromTransaction ->
+            val fromCondition = """
+                           (
+                                tx.timestamp < ${fromTransaction.timestamp} OR 
+                                (
+                                    tx.timestamp = ${fromTransaction.timestamp} AND 
+                                    HEX(tx.hash) < "${fromTransaction.hashString}
+                                )
+                           )
+                           """
+
+            whereConditions.add(fromCondition)
+        }
+
+        val transactionTagJoinStatements = tags
+            .mapIndexed { index, _ ->
+                "INNER JOIN TransactionTag AS transaction_tags_$index ON tx.hash = transaction_tags_$index.hash"
+            }
+            .joinToString("\n")
+
+        val whereClause = if (whereConditions.isNotEmpty()) "WHERE ${whereConditions.joinToString(" AND ")}" else ""
+        val orderClause = "ORDER BY tx.timestamp DESC, HEX(tx.hash) DESC"
+        val limitClause = limit?.let { "LIMIT $limit" } ?: ""
+
+        val sqlQuery = """
+                      SELECT tx.*
+                      FROM `Transaction` as tx
+                      $transactionTagJoinStatements
+                      $whereClause
+                      $orderClause
+                      $limitClause
+                      """
+
+        return database.transactionDao().getTransactionsBefore(SimpleSQLiteQuery(sqlQuery))
+    }
+
     fun getInternalTransactions(): List<InternalTransaction> {
         return database.transactionDao().getInternalTransactions()
+    }
+
+    fun getInternalTransactionsByHashes(hashes: List<ByteArray>): List<InternalTransaction> {
+        return database.transactionDao().getInternalTransactionsByHashes(hashes)
     }
 
     fun saveInternalTransactions(transactions: List<InternalTransaction>) {
         database.transactionDao().insertInternalTransactions(transactions)
     }
 
-    fun getTrc20Events(): List<Trc20Event> {
+    fun getTrc20Events(): List<Trc20EventRecord> {
         return database.transactionDao().getTrc20Events()
     }
 
-    fun saveTrc20Events(trc20Events: List<Trc20Event>) {
+    fun getTrc20EventsByHashes(hashes: List<ByteArray>): List<Trc20EventRecord> {
+        return database.transactionDao().getTrc20EventsByHashes(hashes)
+    }
+
+    fun saveTrc20Events(trc20Events: List<Trc20EventRecord>) {
         database.transactionDao().insertTrc20Events(trc20Events)
+    }
+
+    fun saveTags(tags: List<TransactionTag>) {
+        database.tagsDao().insert(tags)
+    }
+
+    fun markTransactionsAsProcessed() {
+        database.transactionDao().markTransactionsAsProcessed()
     }
 
     private fun trxBalanceId() = "TRX"

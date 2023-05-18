@@ -1,5 +1,7 @@
 package io.horizontalsystems.tronkit
 
+import io.horizontalsystems.tronkit.network.Network
+
 data class Address(
     val raw: ByteArray
 ) {
@@ -8,6 +10,10 @@ data class Address(
     }
 
     companion object {
+        fun fromRawWithoutPrefix(rawWithoutPrefix: ByteArray, prefixByte: Byte = Network.Mainnet.addressPrefixByte): Address {
+            return Address(byteArrayOf(prefixByte) + rawWithoutPrefix)
+        }
+
         fun fromHex(hex: String): Address {
             return Address(hex.hexStringToByteArray())
         }
@@ -24,12 +30,7 @@ data class Address(
         get() = raw.toRawHexString()
 
     override fun equals(other: Any?): Boolean {
-        if (this === other)
-            return true
-
-        return if (other is Address)
-            raw.contentEquals(other.raw)
-        else false
+        return this === other || other is Address && raw.contentEquals(other.raw)
     }
 
     override fun hashCode(): Int {

@@ -3,6 +3,7 @@ package io.horizontalsystems.tronkit.models
 import androidx.room.Entity
 import androidx.room.Ignore
 import androidx.room.PrimaryKey
+import io.horizontalsystems.tronkit.toRawHexString
 
 @Entity
 data class Transaction(
@@ -23,6 +24,11 @@ data class Transaction(
 
     val processed: Boolean = false
 ) {
+
+    @delegate:Ignore
+    val hashString: String by lazy {
+        hash.toRawHexString()
+    }
 
     @delegate:Ignore
     val contract: Contract? by lazy {

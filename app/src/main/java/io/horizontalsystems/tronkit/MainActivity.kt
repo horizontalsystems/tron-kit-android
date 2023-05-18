@@ -120,18 +120,22 @@ fun Transactions(viewModel: MainViewModel) {
             .fillMaxSize()
     ) {
         LazyColumn {
-            viewModel.transactions.forEach {
+            viewModel.transactions.forEach { fullTransaction ->
+                val tx = fullTransaction.transaction
+                val decoration = fullTransaction.decoration
+
                 item {
                     Column(modifier = Modifier.padding(bottom = 8.dp)) {
                         Divider()
                         Spacer(modifier = Modifier.height(8.dp))
                         SelectionContainer {
                             Text(
-                                text =  "TxID: ${it.hash.toRawHexString()}\n" +
-                                        "Type: ${it.contract?.javaClass?.simpleName}\n" +
-                                        "BlockNumber: ${it.blockNumber}\n" +
-                                        "Timestamp: ${it.timestamp}\n" +
-                                        "Date: ${Date(it.timestamp).toLocaleString()}"
+                                text = "TxID: ${tx.hash.toRawHexString()}\n" +
+                                        "Type: ${tx.contract?.javaClass?.simpleName}\n" +
+                                        "Decoration: ${decoration.javaClass.simpleName}\n" +
+                                        "BlockNumber: ${tx.blockNumber}\n" +
+                                        "Timestamp: ${tx.timestamp}\n" +
+                                        "Date: ${Date(tx.timestamp).toLocaleString()}"
                             )
                         }
                     }

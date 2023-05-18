@@ -4,30 +4,82 @@ import android.util.Log
 import com.google.gson.Gson
 import io.horizontalsystems.tronkit.Address
 import io.horizontalsystems.tronkit.database.Storage
+import io.horizontalsystems.tronkit.decoration.DecorationManager
 import io.horizontalsystems.tronkit.hexStringToByteArray
+import io.horizontalsystems.tronkit.models.FullTransaction
 import io.horizontalsystems.tronkit.models.InternalTransaction
 import io.horizontalsystems.tronkit.models.Transaction
-import io.horizontalsystems.tronkit.models.Trc20Event
+import io.horizontalsystems.tronkit.models.TransactionTag
+import io.horizontalsystems.tronkit.models.Trc20EventRecord
 import io.horizontalsystems.tronkit.network.ContractRaw
 import io.horizontalsystems.tronkit.network.ContractTransactionData
 import io.horizontalsystems.tronkit.network.InternalTransactionData
 import io.horizontalsystems.tronkit.network.RegularTransactionData
 import io.horizontalsystems.tronkit.network.TransactionData
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import java.math.BigInteger
 
 class TransactionManager(
+    private val userAddress: Address,
     private val storage: Storage,
+    private val decorationManager: DecorationManager,
     private val gson: Gson
 ) {
-    private val _transactionsFlow = MutableStateFlow(storage.getTransactions())
-    val transactionsFlow: StateFlow<List<Transaction>> = _transactionsFlow
+    private val _transactionsFlow = MutableStateFlow<Pair<List<FullTransaction>, Boolean>>(Pair(listOf(), false))
+    val transactionsFlow: StateFlow<Pair<List<FullTransaction>, Boolean>> = _transactionsFlow
 
-    fun process() {
-//        storage.getTransactions()
+    private val _transactionsWithTagsFlow = MutableStateFlow<List<TransactionWithTags>>(listOf())
+    val transactionsWithTagsFlow: StateFlow<List<TransactionWithTags>> = _transactionsWithTagsFlow
 
-        _transactionsFlow.tryEmit(storage.getTransactions())
+    fun getFullTransactionsFlow(tags: List<List<String>>): Flow<List<FullTransaction>> {
+        return _transactionsWithTagsFlow.map { transactions ->
+            transactions.mapNotNull { transactionWithTags ->
+                for (andTags in tags) {
+                    if (transactionWithTags.tags.all { !andTags.contains(it) }) {
+                        return@mapNotNull null
+                    }
+                }
+                return@mapNotNull transactionWithTags.transaction
+            }
+        }.filter { it.isNotEmpty() }
+    }
+
+    suspend fun getFullTransactions(tags: List<List<String>>, fromHash: ByteArray? = null, limit: Int? = null): List<FullTransaction> {
+        val transactions = storage.getTransactionsBefore(tags, fromHash, limit)
+        return decorationManager.decorateTransactions(transactions)
+    }
+
+    fun getFullTransactions(hashes: List<ByteArray>): List<FullTransaction> =
+        decorationManager.decorateTransactions(storage.getTransactions(hashes))
+
+    fun process(initial: Boolean) {
+        val transactions = storage.getUnprocessedTransactions()
+
+        Log.e("e", "process initial: $initial, transactions: ${transactions.size}")
+
+        if (transactions.isEmpty()) return
+
+        val fullTransactions = decorationManager.decorateTransactions(transactions)
+
+        val transactionWithTags = mutableListOf<TransactionWithTags>()
+        val allTags: MutableList<TransactionTag> = mutableListOf()
+
+        fullTransactions.forEach { fullTransaction ->
+            val tags = fullTransaction.decoration.tags(userAddress).map { TransactionTag(it, fullTransaction.transaction.hash) }
+            allTags.addAll(tags)
+            transactionWithTags.add(TransactionWithTags(fullTransaction, tags.map { it.name }))
+        }
+
+        storage.saveTags(allTags)
+
+        _transactionsFlow.tryEmit(Pair(fullTransactions, initial))
+        _transactionsWithTagsFlow.tryEmit(transactionWithTags)
+
+        storage.markTransactionsAsProcessed()
     }
 
     fun saveTransactionData(transactionData: List<TransactionData>) {
@@ -41,7 +93,7 @@ class TransactionManager(
                 when (txData) {
                     is InternalTransactionData -> {
                         val callValueDouble = (txData.data["call_value"] as? Map<String, Any>)?.get("_") as? Double
-                        val value = callValueDouble?.toBigDecimal()?.toBigInteger()?.toLong()
+                        val value = callValueDouble?.toBigDecimal()?.toBigInteger()
                         Log.e("e", "internal call_value: $value")
 
                         if (value != null) {
@@ -117,7 +169,7 @@ class TransactionManager(
         Log.e("e", "TransactionManager handleContractTransactions(): ${transactionData.size}")
 
         //TODO handle TRC721 transactions
-        val trc20Events = mutableListOf<Trc20Event>()
+        val trc20Events = mutableListOf<Trc20EventRecord>()
         val transactions = mutableListOf<Transaction>()
 
         transactionData.forEach {
@@ -130,7 +182,7 @@ class TransactionManager(
                 )
 
                 trc20Events.add(
-                    Trc20Event(
+                    Trc20EventRecord(
                         it.transaction_id.hexStringToByteArray(),
                         it.block_timestamp,
                         contractAddress = Address.fromBase58(it.token_info.address),
@@ -152,4 +204,8 @@ class TransactionManager(
         storage.saveTransactionsIfNotExists(transactions)
     }
 
+    data class TransactionWithTags(
+        val transaction: FullTransaction,
+        val tags: List<String>
+    )
 }

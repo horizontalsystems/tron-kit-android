@@ -5,87 +5,9 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import io.horizontalsystems.tronkit.Address
 import io.horizontalsystems.tronkit.network.ContractRaw
-
+import java.math.BigInteger
 
 sealed class Contract {
-
-    data class Unknown(
-        val contractsRaw: String
-    ) : Contract()
-
-    //TRX Transfer
-    data class TransferContract(
-        val amount: Long,
-        val ownerAddress: Address,
-        val toAddress: Address
-    ) : Contract()
-
-    //Claim Rewards
-    data class WithdrawBalanceContract(
-        val amount: Long,
-        val ownerAddress: Address
-    ) : Contract()
-
-    //Transfer TRC10 Token
-    data class TransferAssetContract(
-        val amount: Long,
-        val assetName: String,
-        val ownerAddress: Address,
-        val toAddress: Address
-    ) : Contract()
-
-    //Trigger Smart Contract
-    data class TriggerSmartContract(
-        val data: String,
-        val ownerAddress: Address,
-        val contractAddress: Address
-    ) : Contract()
-
-    //Issue TRC10 token
-    data class AssetIssueContract(
-        val totalSupply: Long,
-        val precision: Int,
-        val name: String,
-        val description: String,
-        val ownerAddress: Address,
-        val abbreviation: String,
-        val url: String
-    ) : Contract()
-
-    //TRX Unstake 2.0
-    data class UnfreezeBalanceV2Contract(
-        val resource: String,
-        val ownerAddress: Address,
-        val unfreezeBalance: Long
-    ) : Contract()
-
-    //TRX Stake 2.0
-    data class FreezeBalanceV2Contract(
-        val resource: String,
-        val ownerAddress: Address,
-        val frozenBalance: Long
-    ) : Contract()
-
-    //Vote
-    data class VoteWitnessContract(
-        val ownerAddress: Address,
-        val votes: List<Vote>
-    ) : Contract() {
-
-        val totalVotesCount: Long
-            get() = votes.sumOf { it.count }
-
-        data class Vote(
-            val address: Address,
-            val count: Long
-        )
-    }
-
-    //Create Smart Contract
-    data class CreateSmartContract(
-        val ownerAddress: Address
-    ) : Contract()
-
     companion object {
         private val gson: Gson = Gson()
 
@@ -121,10 +43,14 @@ sealed class Contract {
                     }
 
                     "TriggerSmartContract" -> {
+                        val value = contract.parameter.value
                         TriggerSmartContract(
                             data = contract.data!!,
                             ownerAddress = contract.ownerAddress!!,
-                            contractAddress = contract.contractAddress!!
+                            contractAddress = contract.contractAddress!!,
+                            callValue = value.call_value,
+                            callTokenValue = value.call_token_value,
+                            tokenId = value.token_id
                         )
                     }
 
@@ -189,3 +115,83 @@ sealed class Contract {
     }
 
 }
+
+data class Unknown(
+    val contractsRaw: String
+) : Contract()
+
+//TRX Transfer
+data class TransferContract(
+    val amount: Long,
+    val ownerAddress: Address,
+    val toAddress: Address
+) : Contract()
+
+//Claim Rewards
+data class WithdrawBalanceContract(
+    val amount: Long,
+    val ownerAddress: Address
+) : Contract()
+
+//Transfer TRC10 Token
+data class TransferAssetContract(
+    val amount: Long,
+    val assetName: String,
+    val ownerAddress: Address,
+    val toAddress: Address
+) : Contract()
+
+//Trigger Smart Contract
+data class TriggerSmartContract(
+    val data: String,
+    val ownerAddress: Address,
+    val contractAddress: Address,
+    val callValue: BigInteger?,
+    val callTokenValue: BigInteger?,
+    val tokenId: Int?
+) : Contract()
+
+//Issue TRC10 token
+data class AssetIssueContract(
+    val totalSupply: Long,
+    val precision: Int,
+    val name: String,
+    val description: String,
+    val ownerAddress: Address,
+    val abbreviation: String,
+    val url: String
+) : Contract()
+
+//TRX Unstake 2.0
+data class UnfreezeBalanceV2Contract(
+    val resource: String,
+    val ownerAddress: Address,
+    val unfreezeBalance: Long
+) : Contract()
+
+//TRX Stake 2.0
+data class FreezeBalanceV2Contract(
+    val resource: String,
+    val ownerAddress: Address,
+    val frozenBalance: Long
+) : Contract()
+
+//Vote
+data class VoteWitnessContract(
+    val ownerAddress: Address,
+    val votes: List<Vote>
+) : Contract() {
+
+    val totalVotesCount: Long
+        get() = votes.sumOf { it.count }
+
+    data class Vote(
+        val address: Address,
+        val count: Long
+    )
+}
+
+//Create Smart Contract
+data class CreateSmartContract(
+    val ownerAddress: Address
+) : Contract()

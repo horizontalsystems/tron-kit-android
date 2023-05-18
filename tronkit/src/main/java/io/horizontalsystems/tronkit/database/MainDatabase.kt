@@ -10,7 +10,8 @@ import io.horizontalsystems.tronkit.models.InternalTransaction
 import io.horizontalsystems.tronkit.models.LastBlockHeight
 import io.horizontalsystems.tronkit.models.Transaction
 import io.horizontalsystems.tronkit.models.TransactionSyncState
-import io.horizontalsystems.tronkit.models.Trc20Event
+import io.horizontalsystems.tronkit.models.TransactionTag
+import io.horizontalsystems.tronkit.models.Trc20EventRecord
 
 @Database(
     entities = [
@@ -19,7 +20,8 @@ import io.horizontalsystems.tronkit.models.Trc20Event
         TransactionSyncState::class,
         Transaction::class,
         InternalTransaction::class,
-        Trc20Event::class
+        Trc20EventRecord::class,
+        TransactionTag::class
     ],
     version = 1,
     exportSchema = false
@@ -30,6 +32,7 @@ abstract class MainDatabase : RoomDatabase() {
     abstract fun lastBlockHeightDao(): LastBlockHeightDao
     abstract fun balanceDao(): BalanceDao
     abstract fun transactionDao(): TransactionDao
+    abstract fun tagsDao(): TransactionTagDao
 
     companion object {
         fun getInstance(context: Context, databaseName: String): MainDatabase {

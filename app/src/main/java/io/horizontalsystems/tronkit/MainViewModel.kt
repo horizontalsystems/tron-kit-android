@@ -7,7 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import io.horizontalsystems.tronkit.models.Transaction
+import io.horizontalsystems.tronkit.models.FullTransaction
 import io.horizontalsystems.tronkit.network.Network
 import kotlinx.coroutines.launch
 
@@ -24,7 +24,7 @@ class MainViewModel(
     var syncState: TronKit.SyncState by mutableStateOf(kit.syncState)
         private set
 
-    var transactions: List<Transaction> by mutableStateOf(listOf())
+    var transactions: List<FullTransaction> by mutableStateOf(listOf())
         private set
 
     init {
@@ -52,8 +52,9 @@ class MainViewModel(
 
         viewModelScope.launch {
             kit.transactionsFlow.collect {
-                Log.e("e", "transactionsFlow: ${it.size}")
-                transactions = it
+                val allTransactions = kit.getFullTransactions(emptyList(), null, null)
+                Log.e("e", "onTxUpdate, allTransactions: ${allTransactions.size}")
+                transactions = allTransactions
             }
         }
     }

@@ -266,6 +266,9 @@ data class Value(
     val withdraw_amount: Long?,
     val data: String?,
     val contract_address: String?,
+    val call_value: BigInteger?,
+    val call_token_value: BigInteger?,
+    val token_id: Int,
 
     val total_supply: Long?,
     val precision: Int?,
