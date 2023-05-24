@@ -4,7 +4,12 @@ import com.google.gson.TypeAdapter
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
-import io.horizontalsystems.tronkit.*
+import io.horizontalsystems.tronkit.Address
+import io.horizontalsystems.tronkit.hexStringToBigIntegerOrNull
+import io.horizontalsystems.tronkit.hexStringToByteArrayOrNull
+import io.horizontalsystems.tronkit.hexStringToIntOrNull
+import io.horizontalsystems.tronkit.hexStringToLongOrNull
+import io.horizontalsystems.tronkit.toHexString
 import java.math.BigInteger
 
 class BigIntegerTypeAdapter(private val isHex: Boolean = true) : TypeAdapter<BigInteger?>() {
@@ -12,8 +17,10 @@ class BigIntegerTypeAdapter(private val isHex: Boolean = true) : TypeAdapter<Big
         if (value == null) {
             writer.nullValue()
         } else {
-            val stringValue = if (isHex) value.toHexString() else value.toString()
-            writer.value(stringValue)
+            if (isHex)
+                writer.value(value.toHexString())
+            else
+                writer.value(value)
         }
     }
 
@@ -22,8 +29,10 @@ class BigIntegerTypeAdapter(private val isHex: Boolean = true) : TypeAdapter<Big
             reader.nextNull()
             return null
         }
-        val stringValue = reader.nextString()
-        return if (isHex) stringValue.hexStringToBigIntegerOrNull() else BigInteger(stringValue)
+        return if (isHex)
+            reader.nextString().hexStringToBigIntegerOrNull()
+        else
+            BigInteger(reader.nextString())
     }
 }
 
@@ -32,8 +41,10 @@ class LongTypeAdapter(private val isHex: Boolean = true) : TypeAdapter<Long?>() 
         if (value == null) {
             writer.nullValue()
         } else {
-            val stringValue = if (isHex) value.toHexString() else value.toString()
-            writer.value(stringValue)
+            if (isHex)
+                writer.value(value.toHexString())
+            else
+                writer.value(value)
         }
     }
 
@@ -42,8 +53,10 @@ class LongTypeAdapter(private val isHex: Boolean = true) : TypeAdapter<Long?>() 
             reader.nextNull()
             return null
         }
-        val stringValue = reader.nextString()
-        return if (isHex) stringValue.hexStringToLongOrNull() else stringValue.toLongOrNull()
+        return if (isHex)
+            reader.nextString().hexStringToLongOrNull()
+        else
+            reader.nextString().toLongOrNull()
     }
 }
 

@@ -3,11 +3,39 @@ package io.horizontalsystems.tronkit.models
 import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.google.protobuf.Any
+import com.google.protobuf.ByteString
 import io.horizontalsystems.tronkit.Address
 import io.horizontalsystems.tronkit.network.ContractRaw
+import org.tron.protos.Protocol
+import org.tron.protos.contract.BalanceContract
 import java.math.BigInteger
 
 sealed class Contract {
+
+    val proto: Protocol.Transaction.Contract
+        get() = when (this) {
+            is TransferContract -> {
+                val transferContract = BalanceContract.TransferContract.newBuilder()
+                    .setToAddress(ByteString.fromHex(this.toAddress.hex))
+                    .setOwnerAddress(ByteString.fromHex(this.ownerAddress.hex))
+                    .setAmount(this.amount.toLong())
+                    .build()
+
+                val parameter = Any.newBuilder()
+                    .setValue(transferContract.toByteString())
+                    .setTypeUrl("type.googleapis.com/protocol.TransferContract")
+                    .build()
+
+                Protocol.Transaction.Contract.newBuilder()
+                    .setType(Protocol.Transaction.Contract.ContractType.TransferContract)
+                    .setParameter(parameter)
+                    .build()
+            }
+
+            else -> throw IllegalStateException("No proto conversion for this contract: ${this.javaClass.simpleName}")
+        }
+
     companion object {
         private val gson: Gson = Gson()
 
@@ -122,7 +150,7 @@ data class Unknown(
 
 //TRX Transfer
 data class TransferContract(
-    val amount: Long,
+    val amount: BigInteger,
     val ownerAddress: Address,
     val toAddress: Address
 ) : Contract()
@@ -135,7 +163,7 @@ data class WithdrawBalanceContract(
 
 //Transfer TRC10 Token
 data class TransferAssetContract(
-    val amount: Long,
+    val amount: BigInteger,
     val assetName: String,
     val ownerAddress: Address,
     val toAddress: Address

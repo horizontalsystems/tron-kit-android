@@ -13,6 +13,7 @@ import io.horizontalsystems.tronkit.models.TransactionTag
 import io.horizontalsystems.tronkit.models.Trc20EventRecord
 import io.horizontalsystems.tronkit.network.ContractRaw
 import io.horizontalsystems.tronkit.network.ContractTransactionData
+import io.horizontalsystems.tronkit.network.CreatedTransaction
 import io.horizontalsystems.tronkit.network.InternalTransactionData
 import io.horizontalsystems.tronkit.network.RegularTransactionData
 import io.horizontalsystems.tronkit.network.TransactionData
@@ -55,6 +56,17 @@ class TransactionManager(
 
     fun getFullTransactions(hashes: List<ByteArray>): List<FullTransaction> =
         decorationManager.decorateTransactions(storage.getTransactions(hashes))
+
+    fun handle(createdTransaction: CreatedTransaction) {
+        val transaction = Transaction(
+            hash = createdTransaction.txID.hexStringToByteArray(),
+            timestamp = createdTransaction.raw_data.timestamp,
+            contractsRaw = gson.toJson(createdTransaction.raw_data.contract)
+        )
+        storage.saveTransactions(listOf(transaction))
+
+        process(false)
+    }
 
     fun process(initial: Boolean) {
         val transactions = storage.getUnprocessedTransactions()

@@ -8,6 +8,7 @@ import io.horizontalsystems.tronkit.database.MainDatabase
 import io.horizontalsystems.tronkit.database.Storage
 import io.horizontalsystems.tronkit.decoration.DecorationManager
 import io.horizontalsystems.tronkit.decoration.trc20.Trc20TransactionDecorator
+import io.horizontalsystems.tronkit.models.Contract
 import io.horizontalsystems.tronkit.models.FullTransaction
 import io.horizontalsystems.tronkit.network.ConnectionManager
 import io.horizontalsystems.tronkit.network.Network
@@ -16,6 +17,7 @@ import io.horizontalsystems.tronkit.sync.AccountInfoManager
 import io.horizontalsystems.tronkit.sync.SyncTimer
 import io.horizontalsystems.tronkit.sync.Syncer
 import io.horizontalsystems.tronkit.sync.TransactionManager
+import io.horizontalsystems.tronkit.sync.TransactionSender
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -27,9 +29,12 @@ import java.security.Security
 import java.util.Objects
 
 class TronKit(
+    val address: Address,
     private val syncer: Syncer,
     private val accountInfoManager: AccountInfoManager,
-    private val transactionManager: TransactionManager
+    private val transactionManager: TransactionManager,
+    private val transactionSender: TransactionSender,
+    private val feeProvider: FeeProvider
 ) {
     private var started = false
     private var scope: CoroutineScope? = null
@@ -84,6 +89,23 @@ class TronKit(
         return transactionManager.getFullTransactions(hashes)
     }
 
+    fun estimateFee(contract: Contract): List<Fee> {
+        return feeProvider.estimateFee(contract)
+    }
+
+    suspend fun send(contract: Contract, signer: Signer, feeLimit: Long? = null): String {
+        val createdTransaction = transactionSender.createTransaction(contract, feeLimit)
+        val response = transactionSender.broadcastTransaction(createdTransaction, signer)
+
+        check(response.result) {
+            throw IllegalStateException(response.code + " " + response.message)
+        }
+
+        transactionManager.handle(createdTransaction)
+
+        return response.txid
+    }
+
     sealed class SyncState {
         class Synced : SyncState()
         class NotSynced(val error: Throwable) : SyncState()
@@ -117,9 +139,14 @@ class TronKit(
         }
     }
 
-    open class SyncError : Exception() {
+    sealed class SyncError : Throwable() {
         class NotStarted : SyncError()
         class NoNetworkConnection : SyncError()
+    }
+
+    sealed class TransactionError : Throwable() {
+        class NotSupportedContract(val contract: Contract) : TransactionError()
+        class InvalidCreatedTransaction(val rawDataHex: String) : TransactionError()
     }
 
     companion object {
@@ -151,7 +178,7 @@ class TronKit(
             tronGridApiKey: String,
             walletId: String
         ): TronKit {
-            val syncTimer = SyncTimer(30, ConnectionManager(application))
+            val syncTimer = SyncTimer(120, ConnectionManager(application))
             val tronGridService = TronGridService(network, tronGridApiKey)
             val databaseName = getDatabaseName(network, walletId)
             val storage = Storage(MainDatabase.getInstance(application, databaseName))
@@ -161,8 +188,11 @@ class TronKit(
             }
             val transactionManager = TransactionManager(address, storage, decorationManager, Gson())
             val syncer = Syncer(address, syncTimer, tronGridService, accountInfoManager, transactionManager, storage)
+            val transactionSender = TransactionSender(tronGridService)
+            val chainParameterManager = ChainParameterManager()
+            val feeProvider = FeeProvider(tronGridService, chainParameterManager)
 
-            return TronKit(syncer, accountInfoManager, transactionManager)
+            return TronKit(address, syncer, accountInfoManager, transactionManager, transactionSender, feeProvider)
         }
 
         private fun getDatabaseName(network: Network, walletId: String): String {

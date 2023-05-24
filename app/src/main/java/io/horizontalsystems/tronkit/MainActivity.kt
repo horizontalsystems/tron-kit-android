@@ -109,6 +109,14 @@ fun Balance(viewModel: MainViewModel) {
         Text(text = "Last Block Height: ${viewModel.lastBlockHeight}", fontSize = 25.sp)
         Spacer(modifier = Modifier.height(20.dp))
         Text(text = "Sync State: ${viewModel.syncState}", fontSize = 25.sp)
+
+        Spacer(modifier = Modifier.height(50.dp))
+        Button(onClick = {
+            viewModel.sendTrxTest()
+        }) {
+            Text(text = "createTransaction")
+
+        }
     }
 }
 
@@ -132,6 +140,7 @@ fun Transactions(viewModel: MainViewModel) {
                             Text(
                                 text = "TxID: ${tx.hash.toRawHexString()}\n" +
                                         "Type: ${tx.contract?.javaClass?.simpleName}\n" +
+                                        "Contract: ${tx.contract}\n" +
                                         "Decoration: ${decoration.javaClass.simpleName}\n" +
                                         "BlockNumber: ${tx.blockNumber}\n" +
                                         "Timestamp: ${tx.timestamp}\n" +

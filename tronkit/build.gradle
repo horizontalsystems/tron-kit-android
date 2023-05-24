@@ -2,6 +2,27 @@ plugins {
     id 'com.android.library'
     id 'org.jetbrains.kotlin.android'
     id 'kotlin-kapt'
+    id 'com.google.protobuf'
+}
+
+sourceSets {
+    main.java.srcDirs += "${protobuf.generatedFilesBaseDir}/main/java"
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.19.4"
+    }
+
+    generateProtoTasks {
+        all().each { task ->
+            task.builtins {
+                java {
+                    option 'lite'
+                }
+            }
+        }
+    }
 }
 
 android {
@@ -45,6 +66,8 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+
+    implementation "com.google.protobuf:protobuf-javalite:3.23.1"
 
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.11.0'

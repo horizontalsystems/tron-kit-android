@@ -1,5 +1,6 @@
 package io.horizontalsystems.tronkit.network
 
+import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
@@ -7,6 +8,7 @@ import com.google.gson.reflect.TypeToken
 import io.horizontalsystems.tronkit.Address
 import io.horizontalsystems.tronkit.models.AccountInfo
 import io.horizontalsystems.tronkit.rpc.*
+import io.horizontalsystems.tronkit.toRawHexString
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -36,7 +38,7 @@ class TronGridService(
     private val gson: Gson
 
     init {
-        val loggingInterceptor = HttpLoggingInterceptor { message -> logger.info(message) }.setLevel(HttpLoggingInterceptor.Level.HEADERS)
+        val loggingInterceptor = HttpLoggingInterceptor { message -> logger.info(message) }.setLevel(HttpLoggingInterceptor.Level.BODY)
         val headersInterceptor = Interceptor { chain ->
             val requestBuilder = chain.request().newBuilder()
 
@@ -102,6 +104,72 @@ class TronGridService(
         return Pair(response.data, response.meta.fingerprint)
     }
 
+    fun estimateEnergy(ownerAddress: String, contractAddress: String, functionSelector: String, parameter: ByteArray): Long {
+        TODO("not implemented")
+    }
+
+    suspend fun createTransaction(
+        fromAddress: Address,
+        toAddress: Address,
+        amount: BigInteger
+    ): CreatedTransaction {
+        val response = service.createTransaction(
+            CreateTransactionRequest(
+                owner_address = fromAddress.hex,
+                to_address = toAddress.hex,
+                amount = amount
+            )
+        )
+        Log.e("e", "to json: ${gson.toJson(response)}")
+
+        return response
+    }
+
+    suspend fun triggerSmartContract(
+        ownerAddress: Address,
+        contractAddress: Address,
+        functionSelector: String,
+        parameter: String,
+        feeLimit: Long,
+        callValue: Long
+    ): CreatedTransaction {
+        val response = service.triggerSmartContract(
+            TriggerSmartContractRequest(
+                owner_address = ownerAddress.hex,
+                contract_address = contractAddress.hex,
+                function_selector = functionSelector,
+                parameter = parameter,
+                fee_limit = feeLimit,
+                call_value = callValue
+            )
+        )
+
+        check(response.result.result) { "Response with result = false" }
+
+        return response.createdTransaction
+    }
+
+    suspend fun broadcastTransaction(
+        createdTransaction: CreatedTransaction,
+        signature: ByteArray
+    ): BroadcastTransactionResponse {
+        Log.e("e", "broadcast with signature: ${signature.toRawHexString()}")
+
+        val response = service.broadcastTransaction(
+            SignedTransaction(
+                visible = createdTransaction.visible,
+                txID = createdTransaction.txID,
+                raw_data = createdTransaction.raw_data,
+                raw_data_hex = createdTransaction.raw_data_hex,
+                signature = listOf(signature.toRawHexString())
+            )
+        )
+
+        Log.e("e", "to json: ${gson.toJson(response)}")
+
+        return response
+    }
+
     private fun gson(isHex: Boolean): Gson = GsonBuilder()
         .setLenient()
         .registerTypeAdapter(BigInteger::class.java, BigIntegerTypeAdapter(isHex))
@@ -151,12 +219,78 @@ class TronGridService(
             @Query("limit") limit: Int = Companion.limit,
             @Query("order_by") orderBy: String = Companion.orderBy
         ): ContractTransactionsResponse
+
+        @POST("wallet/createtransaction")
+        @Headers("Content-Type: application/json", "Accept: application/json")
+        suspend fun createTransaction(
+            @Body request: CreateTransactionRequest
+        ): CreatedTransaction
+
+        @POST("wallet/triggersmartcontract")
+        @Headers("Content-Type: application/json", "Accept: application/json")
+        suspend fun triggerSmartContract(
+            @Body request: TriggerSmartContractRequest
+        ): TriggerSmartContractResponse
+
+        @POST("wallet/broadcasttransaction")
+        @Headers("Content-Type: application/json", "Accept: application/json")
+        suspend fun broadcastTransaction(
+            @Body signedTransaction: SignedTransaction
+        ): BroadcastTransactionResponse
     }
 
     sealed class TronGridServiceError : Throwable() {
         object NoAccountInfoData : TronGridServiceError()
     }
 }
+
+data class CreateTransactionRequest(
+    val owner_address: String,
+    val to_address: String,
+    val amount: BigInteger,
+    val visible: Boolean = false
+)
+
+data class CreatedTransaction(
+    val visible: Boolean,
+    val txID: String,
+    val raw_data: RawData,
+    val raw_data_hex: String
+)
+
+data class TriggerSmartContractRequest(
+    val owner_address: String,
+    val contract_address: String,
+    val function_selector: String,
+    val parameter: String,
+    val fee_limit: Long,
+    val call_value: Long,
+    val visible: Boolean = false
+)
+
+data class TriggerSmartContractResponse(
+    val result: Result,
+    val createdTransaction: CreatedTransaction
+)
+
+data class Result(
+    val result: Boolean
+)
+
+data class SignedTransaction(
+    val visible: Boolean,
+    val txID: String,
+    val raw_data: RawData,
+    val raw_data_hex: String,
+    val signature: List<String>
+)
+
+data class BroadcastTransactionResponse(
+    val result: Boolean,
+    val txid: String,
+    val code: String,
+    val message: String
+)
 
 data class ContractTransactionsResponse(
     val data: List<ContractTransactionData>,
@@ -224,14 +358,15 @@ data class RawData(
     val ref_block_bytes: String,
     val ref_block_hash: String,
     val expiration: Long,
-    val timestamp: Long
+    val timestamp: Long,
+    val fee_limit: Long?
 )
 
 data class ContractRaw(
     val type: String,
     val parameter: Parameter
 ) {
-    val amount: Long?
+    val amount: BigInteger?
         get() = parameter.value.amount
 
     val ownerAddress: Address?
@@ -259,7 +394,7 @@ data class Parameter(
 )
 
 data class Value(
-    val amount: Long?,
+    val amount: BigInteger?,
     val owner_address: String?,
     val to_address: String?,
     val asset_name: String?,
@@ -268,7 +403,7 @@ data class Value(
     val contract_address: String?,
     val call_value: BigInteger?,
     val call_token_value: BigInteger?,
-    val token_id: Int,
+    val token_id: Int?,
 
     val total_supply: Long?,
     val precision: Int?,
