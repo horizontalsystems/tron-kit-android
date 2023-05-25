@@ -78,8 +78,11 @@ class FeeProvider(
 
     private val MAX_RESULT_SIZE_IN_TX: Long = 64
 
-    private fun isAccountActive(address: Address): Boolean {
-        return true
+    private suspend fun isAccountActive(address: Address) = try {
+        tronGridService.getAccountInfo(address.base58)
+        true
+    } catch (error: TronGridService.TronGridServiceError.NoAccountInfoData) {
+        false
     }
 
     private fun feesAccountActivation(): List<Fee> {
@@ -115,7 +118,7 @@ class FeeProvider(
     }
 
 
-    fun estimateFee(contract: Contract): List<Fee> {
+    suspend fun estimateFee(contract: Contract): List<Fee> {
         val fees = mutableListOf<Fee>()
 
         when (contract) {

@@ -69,9 +69,9 @@ class TronGridService(
 
     suspend fun getAccountInfo(address: String): AccountInfo {
         val response = service.accountInfo(address)
-        val data = response.data.firstOrNull() //TODO handle inactive account // ?: throw TronGridServiceError.NoAccountInfoData
+        val data = response.data.firstOrNull() ?: throw TronGridServiceError.NoAccountInfoData
 
-        return AccountInfo(data?.balance ?: BigInteger.ZERO)
+        return AccountInfo(data.balance)
     }
 
     suspend fun getTransactions(

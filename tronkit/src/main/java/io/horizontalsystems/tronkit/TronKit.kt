@@ -85,11 +85,11 @@ class TronKit(
         return transactionManager.getFullTransactions(tags, fromHash, limit)
     }
 
-    fun getFullTransactions(hashes: List<ByteArray>): List<FullTransaction> {
+    suspend fun getFullTransactions(hashes: List<ByteArray>): List<FullTransaction> {
         return transactionManager.getFullTransactions(hashes)
     }
 
-    fun estimateFee(contract: Contract): List<Fee> {
+    suspend fun estimateFee(contract: Contract): List<Fee> {
         return feeProvider.estimateFee(contract)
     }
 

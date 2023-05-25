@@ -54,8 +54,10 @@ class TransactionManager(
         return decorationManager.decorateTransactions(transactions)
     }
 
-    fun getFullTransactions(hashes: List<ByteArray>): List<FullTransaction> =
-        decorationManager.decorateTransactions(storage.getTransactions(hashes))
+    fun getFullTransactions(hashes: List<ByteArray>): List<FullTransaction> {
+        val transactions = storage.getTransactions(hashes)
+        return decorationManager.decorateTransactions(transactions)
+    }
 
     fun handle(createdTransaction: CreatedTransaction) {
         val transaction = Transaction(
