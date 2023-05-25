@@ -29,6 +29,9 @@ data class Address(
     val hex: String
         get() = raw.toRawHexString()
 
+    val rawWithoutPrefix: ByteArray
+        get() = raw.drop(1).toByteArray()
+
     override fun equals(other: Any?): Boolean {
         return this === other || other is Address && raw.contentEquals(other.raw)
     }

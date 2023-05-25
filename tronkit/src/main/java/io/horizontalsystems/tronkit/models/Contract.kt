@@ -9,6 +9,7 @@ import io.horizontalsystems.tronkit.Address
 import io.horizontalsystems.tronkit.network.ContractRaw
 import org.tron.protos.Protocol
 import org.tron.protos.contract.BalanceContract
+import org.tron.protos.contract.SmartContractOuterClass
 import java.math.BigInteger
 
 sealed class Contract {
@@ -29,6 +30,27 @@ sealed class Contract {
 
                 Protocol.Transaction.Contract.newBuilder()
                     .setType(Protocol.Transaction.Contract.ContractType.TransferContract)
+                    .setParameter(parameter)
+                    .build()
+            }
+
+            is TriggerSmartContract -> {
+                val triggerSmartContract = SmartContractOuterClass.TriggerSmartContract.newBuilder()
+                    .setContractAddress(ByteString.fromHex(contractAddress.hex))
+                    .setOwnerAddress(ByteString.fromHex(ownerAddress.hex))
+                    .setData(ByteString.fromHex(data))
+
+                callValue?.let { triggerSmartContract.setCallValue(it.toLong()) }
+                callTokenValue?.let { triggerSmartContract.setCallTokenValue(it.toLong()) }
+                tokenId?.let { triggerSmartContract.setTokenId(it.toLong()) }
+
+                val parameter = Any.newBuilder()
+                    .setValue(triggerSmartContract.build().toByteString())
+                    .setTypeUrl("type.googleapis.com/protocol.TriggerSmartContract")
+                    .build()
+
+                Protocol.Transaction.Contract.newBuilder()
+                    .setType(Protocol.Transaction.Contract.ContractType.TriggerSmartContract)
                     .setParameter(parameter)
                     .build()
             }
@@ -176,7 +198,10 @@ data class TriggerSmartContract(
     val contractAddress: Address,
     val callValue: BigInteger?,
     val callTokenValue: BigInteger?,
-    val tokenId: Int?
+    val tokenId: Int?,
+
+    val functionSelector: String? = null,
+    val parameter: String? = null
 ) : Contract()
 
 //Issue TRC10 token

@@ -3,6 +3,8 @@ package io.horizontalsystems.tronkit
 import android.app.Application
 import com.google.gson.Gson
 import io.horizontalsystems.hdwalletkit.Mnemonic
+import io.horizontalsystems.tronkit.contracts.ContractMethodHelper
+import io.horizontalsystems.tronkit.contracts.trc20.TransferMethod
 import io.horizontalsystems.tronkit.crypto.InternalBouncyCastleProvider
 import io.horizontalsystems.tronkit.database.MainDatabase
 import io.horizontalsystems.tronkit.database.Storage
@@ -10,6 +12,8 @@ import io.horizontalsystems.tronkit.decoration.DecorationManager
 import io.horizontalsystems.tronkit.decoration.trc20.Trc20TransactionDecorator
 import io.horizontalsystems.tronkit.models.Contract
 import io.horizontalsystems.tronkit.models.FullTransaction
+import io.horizontalsystems.tronkit.models.TransferContract
+import io.horizontalsystems.tronkit.models.TriggerSmartContract
 import io.horizontalsystems.tronkit.network.ConnectionManager
 import io.horizontalsystems.tronkit.network.Network
 import io.horizontalsystems.tronkit.network.TronGridService
@@ -93,6 +97,35 @@ class TronKit(
         return feeProvider.estimateFee(contract)
     }
 
+    fun transferContract(amount: BigInteger, toAddress: Address) = TransferContract(
+        amount = amount,
+        ownerAddress = address,
+        toAddress = toAddress
+    )
+
+    fun transferTrc20TriggerSmartContract(
+        contractAddress: Address,
+        toAddress: Address,
+        amount: BigInteger
+    ): TriggerSmartContract {
+        val transferMethod = TransferMethod(toAddress, amount)
+        val data = transferMethod.encodedABI().toRawHexString()
+        val parameter = ContractMethodHelper
+            .encodedABI(methodId = byteArrayOf(), arguments = transferMethod.getArguments())
+            .toRawHexString()
+
+        return TriggerSmartContract(
+            data = data,
+            ownerAddress = address,
+            contractAddress = contractAddress,
+            callTokenValue = null, //??
+            callValue = null, //??
+            tokenId = null, //??
+            functionSelector = TransferMethod.methodSignature,
+            parameter = parameter
+        )
+    }
+
     suspend fun send(contract: Contract, signer: Signer, feeLimit: Long? = null): String {
         val createdTransaction = transactionSender.createTransaction(contract, feeLimit)
         val response = transactionSender.broadcastTransaction(createdTransaction, signer)
@@ -147,6 +180,9 @@ class TronKit(
     sealed class TransactionError : Throwable() {
         class NotSupportedContract(val contract: Contract) : TransactionError()
         class InvalidCreatedTransaction(val rawDataHex: String) : TransactionError()
+        class NoFunctionSelector(val triggerSmartContract: TriggerSmartContract) : TransactionError()
+        class NoParameter(val triggerSmartContract: TriggerSmartContract) : TransactionError()
+        class NoFeeLimit(val triggerSmartContract: TriggerSmartContract) : TransactionError()
     }
 
     companion object {

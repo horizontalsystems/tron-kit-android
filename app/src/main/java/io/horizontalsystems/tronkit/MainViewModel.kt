@@ -9,7 +9,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.horizontalsystems.hdwalletkit.Mnemonic
 import io.horizontalsystems.tronkit.models.FullTransaction
-import io.horizontalsystems.tronkit.models.TransferContract
 import io.horizontalsystems.tronkit.network.Network
 import kotlinx.coroutines.launch
 import java.math.BigInteger
@@ -66,19 +65,32 @@ class MainViewModel(
     fun sendTrxTest() {
         viewModelScope.launch {
             try {
-                val transferContract = TransferContract(
+                val transferContract = kit.transferContract(
                     amount = BigInteger.valueOf(890_000),
-                    ownerAddress = kit.address,
                     toAddress = Address.fromBase58("TDoRr9CQsGoVb66CJRBsaWbBLRaZmLpfMr")
                 )
 
-                val fees = kit.estimateFee(transferContract)
+                val triggerSmartContract = kit.transferTrc20TriggerSmartContract(
+                    contractAddress = Address.fromBase58("TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj"),
+                    toAddress = Address.fromBase58("TDoRr9CQsGoVb66CJRBsaWbBLRaZmLpfMr"),
+                    amount = BigInteger.valueOf(99_000_000)
+                )
+
+                val fees = kit.estimateFee(triggerSmartContract)
                 Log.e("e", "fees: ${fees.size}")
                 fees.forEach {
                     Log.e("e", "fee $it")
                 }
 
-                val sendResult = kit.send(transferContract, signer)
+                val feeLimit = fees.sumOf { it.feeInSuns }
+                Log.e("e", "total feeLimit: $feeLimit ")
+
+                val sendResult = kit.send(
+                    contract = triggerSmartContract,
+                    signer = signer,
+                    feeLimit = feeLimit
+                )
+//                val sendResult = kit.send(transferContract, signer)
                 Log.e("e", "sendResult: $sendResult")
 
             } catch (error: Throwable) {

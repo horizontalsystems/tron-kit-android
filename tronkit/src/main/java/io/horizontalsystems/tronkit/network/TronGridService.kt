@@ -80,7 +80,8 @@ class TronGridService(
         fingerprint: String?
     ): Pair<List<TransactionData>, String?> {
         val response = service.transactions(address, startBlockTimestamp, fingerprint)
-        check(response.success) { "Response with success = false" }
+
+        check(response.success) { "transactions" }
 
         val transactionData = response.data.map {
             if (it.has("internal_tx_id")) {
@@ -99,13 +100,10 @@ class TronGridService(
         fingerprint: String?
     ): Pair<List<ContractTransactionData>, String?> {
         val response = service.contractTransactions(address, startBlockTimestamp, fingerprint)
-        check(response.success) { "Response with success = false" }
+
+        check(response.success) { "contractTransactions error" }
 
         return Pair(response.data, response.meta.fingerprint)
-    }
-
-    fun estimateEnergy(ownerAddress: String, contractAddress: String, functionSelector: String, parameter: ByteArray): Long {
-        TODO("not implemented")
     }
 
     suspend fun createTransaction(
@@ -122,7 +120,24 @@ class TronGridService(
         )
         Log.e("e", "to json: ${gson.toJson(response)}")
 
+        checkNotNull(response.Error) { "createTransaction error: ${response.Error}" }
+
         return response
+    }
+
+    suspend fun estimateEnergy(ownerAddress: String, contractAddress: String, functionSelector: String, parameter: String): Long {
+        val response = service.estimateEnergy(
+            EstimateEnergyRequest(
+                owner_address = ownerAddress,
+                contract_address = contractAddress,
+                function_selector = functionSelector,
+                parameter = parameter
+            )
+        )
+
+        check(response.result.result) { "estimateEnergy error: ${response.result.code} - ${response.result.message}" }
+
+        return response.energy_required
     }
 
     suspend fun triggerSmartContract(
@@ -144,9 +159,9 @@ class TronGridService(
             )
         )
 
-        check(response.result.result) { "Response with result = false" }
+        check(response.result.result) { "triggerSmartContract error: ${response.result.code} - ${response.result.message}" }
 
-        return response.createdTransaction
+        return response.transaction
     }
 
     suspend fun broadcastTransaction(
@@ -166,6 +181,8 @@ class TronGridService(
         )
 
         Log.e("e", "to json: ${gson.toJson(response)}")
+
+        check(response.result) { "broadcastTransaction error: ${response.code} - ${response.message}" }
 
         return response
     }
@@ -232,6 +249,13 @@ class TronGridService(
             @Body request: TriggerSmartContractRequest
         ): TriggerSmartContractResponse
 
+
+        @POST("wallet/estimateenergy")
+        @Headers("Content-Type: application/json", "Accept: application/json")
+        suspend fun estimateEnergy(
+            @Body request: EstimateEnergyRequest
+        ): EstimateEnergyResponse
+
         @POST("wallet/broadcasttransaction")
         @Headers("Content-Type: application/json", "Accept: application/json")
         suspend fun broadcastTransaction(
@@ -255,7 +279,8 @@ data class CreatedTransaction(
     val visible: Boolean,
     val txID: String,
     val raw_data: RawData,
-    val raw_data_hex: String
+    val raw_data_hex: String,
+    val Error: String?
 )
 
 data class TriggerSmartContractRequest(
@@ -270,11 +295,26 @@ data class TriggerSmartContractRequest(
 
 data class TriggerSmartContractResponse(
     val result: Result,
-    val createdTransaction: CreatedTransaction
+    val transaction: CreatedTransaction
+)
+
+data class EstimateEnergyRequest(
+    val owner_address: String,
+    val contract_address: String,
+    val function_selector: String,
+    val parameter: String,
+    val visible: Boolean = false
+)
+
+data class EstimateEnergyResponse(
+    val result: Result,
+    val energy_required: Long
 )
 
 data class Result(
-    val result: Boolean
+    val result: Boolean,
+    val code: String,
+    val message: String
 )
 
 data class SignedTransaction(

@@ -12,6 +12,13 @@ import org.tron.protos.Protocol.Transaction
 
 sealed class Fee {
 
+    val feeInSuns: Long
+        get() = when (this) {
+            is AccountActivation -> amount
+            is Bandwidth -> points * price
+            is Energy -> required * price
+        }
+
     data class Bandwidth(
         val points: Long,
         val price: Long //sun
@@ -92,10 +99,6 @@ class FeeProvider(
         )
     }
 
-    private fun extractMethod(data: String): Pair<String, ByteArray> {
-        return Pair("", byteArrayOf())
-    }
-
     private fun estimateBandwidth(contract: Contract): Long {
         val transactionBuilder = Transaction.newBuilder()
 
@@ -135,12 +138,11 @@ class FeeProvider(
             }
 
             is TriggerSmartContract -> {
-                val (methodSignature, parameters) = extractMethod(contract.data)
                 val energyRequired = tronGridService.estimateEnergy(
                     ownerAddress = contract.ownerAddress.hex,
                     contractAddress = contract.contractAddress.hex,
-                    functionSelector = methodSignature,
-                    parameter = parameters
+                    functionSelector = contract.functionSelector ?: throw TronKit.TransactionError.NoFunctionSelector(contract),
+                    parameter = contract.parameter ?: throw TronKit.TransactionError.NoParameter(contract)
                 )
                 fees.add(Fee.Energy(required = energyRequired, price = chainParameterManager.energyFee))
             }

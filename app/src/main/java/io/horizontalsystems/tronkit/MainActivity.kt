@@ -82,6 +82,7 @@ class MainActivity : ComponentActivity() {
                                         0 -> {
                                             Balance(viewModel = viewModel)
                                         }
+
                                         1 -> {
                                             Transactions(viewModel = viewModel)
                                         }
@@ -137,9 +138,15 @@ fun Transactions(viewModel: MainViewModel) {
                         Divider()
                         Spacer(modifier = Modifier.height(8.dp))
                         SelectionContainer {
+                            val status = when {
+                                tx.blockNumber == null -> "Pending"
+                                tx.isFailed -> "Failed"
+                                else -> "Success"
+                            }
+
                             Text(
                                 text = "TxID: ${tx.hash.toRawHexString()}\n" +
-                                        "Type: ${tx.contract?.javaClass?.simpleName}\n" +
+                                        "Status: ${status}\n" +
                                         "Contract: ${tx.contract}\n" +
                                         "Decoration: ${decoration.javaClass.simpleName}\n" +
                                         "BlockNumber: ${tx.blockNumber}\n" +

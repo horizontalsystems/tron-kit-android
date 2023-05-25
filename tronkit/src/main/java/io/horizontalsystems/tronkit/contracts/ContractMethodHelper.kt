@@ -36,7 +36,7 @@ object ContractMethodHelper {
                 }
 
                 is Address -> {
-                    data += pad(argument.raw)
+                    data += pad(argument.rawWithoutPrefix)
                 }
 
                 is List<*> -> {

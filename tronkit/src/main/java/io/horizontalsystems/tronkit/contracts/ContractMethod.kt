@@ -9,5 +9,5 @@ open class ContractMethod {
         return ContractMethodHelper.encodedABI(methodId, getArguments())
     }
 
-    protected open fun getArguments(): List<Any> = listOf()
+    open fun getArguments(): List<Any> = listOf()
 }

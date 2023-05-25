@@ -46,12 +46,12 @@ class TransactionSender(
 
             is TriggerSmartContract -> {
                 tronGridService.triggerSmartContract(
-                    contract.ownerAddress,
-                    contract.contractAddress,
-                    "", // TODO
-                    "", // TODO
-                    feeLimit ?: 0,
-                    contract.callValue?.toLong() ?: 0,
+                    ownerAddress = contract.ownerAddress,
+                    contractAddress = contract.contractAddress,
+                    functionSelector = contract.functionSelector ?: throw TransactionError.NoFunctionSelector(contract),
+                    parameter = contract.parameter ?: throw TransactionError.NoParameter(contract),
+                    feeLimit = feeLimit ?: throw TransactionError.NoFeeLimit(contract),
+                    callValue = contract.callValue?.toLong() ?: 0,
                 )
             }
 
@@ -59,6 +59,8 @@ class TransactionSender(
                 throw TransactionError.NotSupportedContract(contract)
             }
         }
+
+        Log.e("e", "createdTransaction: $createdTransaction")
 
         if (isValidCreatedTransaction(createdTransaction, contract)) {
             return createdTransaction
