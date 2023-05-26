@@ -62,37 +62,60 @@ class MainViewModel(
         }
     }
 
+    private suspend fun sendTrx() {
+        val transferContract = kit.transferContract(
+            amount = BigInteger.valueOf(890_000),
+            toAddress = Address.fromBase58("TDoRr9CQsGoVb66CJRBsaWbBLRaZmLpfMr")
+        )
+
+        val fees = kit.estimateFee(transferContract)
+        Log.e("e", "fees: ${fees.size}")
+        fees.forEach {
+            Log.e("e", "fee $it")
+        }
+
+        val feeLimit = fees.sumOf { it.feeInSuns }
+        Log.e("e", "total feeLimit: $feeLimit ")
+
+        val sendResult = kit.send(
+            contract = transferContract,
+            signer = signer
+        )
+
+        Log.e("e", "sendResult: $sendResult")
+    }
+
+    private suspend fun sendTrc20() {
+        val triggerSmartContract = kit.transferTrc20TriggerSmartContract(
+            contractAddress = Address.fromBase58("TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj"),
+            toAddress = Address.fromBase58("TDoRr9CQsGoVb66CJRBsaWbBLRaZmLpfMr"),
+            amount = BigInteger.valueOf(12_000_000)
+        )
+
+        val fees = kit.estimateFee(triggerSmartContract)
+        Log.e("e", "fees: ${fees.size}")
+        fees.forEach {
+            Log.e("e", "fee $it")
+        }
+
+        val feeLimit = fees.sumOf { it.feeInSuns }
+        Log.e("e", "total feeLimit: $feeLimit ")
+
+        val energyFeeLimit = (fees.find { it is Fee.Energy } as? Fee.Energy)?.feeInSuns
+        Log.e("e", "energy feeLimit: $energyFeeLimit ")
+
+        val sendResult = kit.send(
+            contract = triggerSmartContract,
+            signer = signer,
+            feeLimit = energyFeeLimit
+        )
+        Log.e("e", "sendResult: $sendResult")
+    }
+
     fun sendTrxTest() {
         viewModelScope.launch {
             try {
-                val transferContract = kit.transferContract(
-                    amount = BigInteger.valueOf(890_000),
-                    toAddress = Address.fromBase58("TDoRr9CQsGoVb66CJRBsaWbBLRaZmLpfMr")
-                )
-
-                val triggerSmartContract = kit.transferTrc20TriggerSmartContract(
-                    contractAddress = Address.fromBase58("TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj"),
-                    toAddress = Address.fromBase58("TDoRr9CQsGoVb66CJRBsaWbBLRaZmLpfMr"),
-                    amount = BigInteger.valueOf(99_000_000)
-                )
-
-                val fees = kit.estimateFee(triggerSmartContract)
-                Log.e("e", "fees: ${fees.size}")
-                fees.forEach {
-                    Log.e("e", "fee $it")
-                }
-
-                val feeLimit = fees.sumOf { it.feeInSuns }
-                Log.e("e", "total feeLimit: $feeLimit ")
-
-                val sendResult = kit.send(
-                    contract = triggerSmartContract,
-                    signer = signer,
-                    feeLimit = feeLimit
-                )
-//                val sendResult = kit.send(transferContract, signer)
-                Log.e("e", "sendResult: $sendResult")
-
+                sendTrc20()
             } catch (error: Throwable) {
                 Log.e("e", "send tx error", error)
                 error.printStackTrace()

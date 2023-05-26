@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import io.horizontalsystems.tronkit.models.Balance
+import io.horizontalsystems.tronkit.models.ChainParameter
 import io.horizontalsystems.tronkit.models.InternalTransaction
 import io.horizontalsystems.tronkit.models.LastBlockHeight
 import io.horizontalsystems.tronkit.models.Transaction
@@ -21,7 +22,8 @@ import io.horizontalsystems.tronkit.models.Trc20EventRecord
         Transaction::class,
         InternalTransaction::class,
         Trc20EventRecord::class,
-        TransactionTag::class
+        TransactionTag::class,
+        ChainParameter::class,
     ],
     version = 1,
     exportSchema = false
@@ -33,6 +35,7 @@ abstract class MainDatabase : RoomDatabase() {
     abstract fun balanceDao(): BalanceDao
     abstract fun transactionDao(): TransactionDao
     abstract fun tagsDao(): TransactionTagDao
+    abstract fun chainParameterDao(): ChainParameterDao
 
     companion object {
         fun getInstance(context: Context, databaseName: String): MainDatabase {

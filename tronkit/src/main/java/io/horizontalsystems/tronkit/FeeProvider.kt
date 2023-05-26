@@ -37,47 +37,6 @@ sealed class Fee {
 
 // curl -X POST  https://nile.trongrid.io/wallet/getaccountresource -d '{"address" : "TNeQ7jLVzXUB9kXVurzN9ZQibLaykov5v2" }'
 
-class ChainParameterManager {
-    //curl -X POST  https://nile.trongrid.io/wallet/getchainparameters
-
-    val transactionFee: Long // price of 1 bandwidth point
-        get() {
-            /*{
-              "key": "getTransactionFee",
-              "value": 1000
-             }*/
-            return 1000
-        }
-
-    val energyFee: Long // price of 1 energy unit
-        get() {
-            /*{
-                "key": "getEnergyFee",
-                "value": 420
-              }*/
-            return 420
-        }
-
-    val createAccountFee: Long // bandwidth points for creating account
-        get() {
-            /*{
-              "key": "getCreateAccountFee",
-              "value": 100000
-            }*/
-            return 100_000 / transactionFee
-        }
-
-    val createNewAccountFeeInSystemContract: Long
-        get() {
-            /*{
-              "key": "getCreateNewAccountFeeInSystemContract",
-              "value": 1000000
-            }*/
-            return 1_000_000
-        }
-
-}
-
 class FeeProvider(
     private val tronGridService: TronGridService,
     private val chainParameterManager: ChainParameterManager
@@ -99,7 +58,7 @@ class FeeProvider(
         )
     }
 
-    private fun estimateBandwidth(contract: Contract): Long {
+    private fun estimateBandwidth(contract: Contract, feeLimit: Long): Long {
         val transactionBuilder = Transaction.newBuilder()
 
         transactionBuilder.setRawData(
@@ -109,6 +68,7 @@ class FeeProvider(
                 .setExpiration(System.currentTimeMillis())
                 .setRefBlockBytes(ByteString.copyFrom(ByteArray(2)))
                 .setRefBlockHash(ByteString.copyFrom(ByteArray(8)))
+                .setFeeLimit(feeLimit)
         )
             .addSignature(ByteString.copyFrom(ByteArray(65)))
             .clearRet()
@@ -120,9 +80,9 @@ class FeeProvider(
         return bandwidth
     }
 
-
     suspend fun estimateFee(contract: Contract): List<Fee> {
         val fees = mutableListOf<Fee>()
+        var feeLimit: Long = 0
 
         when (contract) {
             is TransferContract -> {
@@ -144,7 +104,10 @@ class FeeProvider(
                     functionSelector = contract.functionSelector ?: throw TronKit.TransactionError.NoFunctionSelector(contract),
                     parameter = contract.parameter ?: throw TronKit.TransactionError.NoParameter(contract)
                 )
-                fees.add(Fee.Energy(required = energyRequired, price = chainParameterManager.energyFee))
+                val feeEnergy = Fee.Energy(required = energyRequired, price = chainParameterManager.energyFee)
+                fees.add(feeEnergy)
+
+                feeLimit = feeEnergy.feeInSuns
             }
 
             else -> {
@@ -152,7 +115,7 @@ class FeeProvider(
             }
         }
 
-        val bandwidth = estimateBandwidth(contract)
+        val bandwidth = estimateBandwidth(contract, feeLimit)
         fees.add(Fee.Bandwidth(points = bandwidth, chainParameterManager.transactionFee))
 
         return fees

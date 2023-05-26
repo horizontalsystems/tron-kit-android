@@ -7,6 +7,7 @@ import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
 import io.horizontalsystems.tronkit.Address
 import io.horizontalsystems.tronkit.models.AccountInfo
+import io.horizontalsystems.tronkit.models.ChainParameter
 import io.horizontalsystems.tronkit.rpc.*
 import io.horizontalsystems.tronkit.toRawHexString
 import okhttp3.Interceptor
@@ -187,6 +188,12 @@ class TronGridService(
         return response
     }
 
+    suspend fun getChainParameters(): List<ChainParameter> {
+        val response = service.getChainParameters()
+
+        return response.chainParameter
+    }
+
     private fun gson(isHex: Boolean): Gson = GsonBuilder()
         .setLenient()
         .registerTypeAdapter(BigInteger::class.java, BigIntegerTypeAdapter(isHex))
@@ -249,7 +256,6 @@ class TronGridService(
             @Body request: TriggerSmartContractRequest
         ): TriggerSmartContractResponse
 
-
         @POST("wallet/estimateenergy")
         @Headers("Content-Type: application/json", "Accept: application/json")
         suspend fun estimateEnergy(
@@ -261,12 +267,19 @@ class TronGridService(
         suspend fun broadcastTransaction(
             @Body signedTransaction: SignedTransaction
         ): BroadcastTransactionResponse
+
+        @GET("wallet/getchainparameters")
+        suspend fun getChainParameters(): ChainParametersResponse
     }
 
     sealed class TronGridServiceError : Throwable() {
         object NoAccountInfoData : TronGridServiceError()
     }
 }
+
+data class ChainParametersResponse(
+    val chainParameter: List<ChainParameter>
+)
 
 data class CreateTransactionRequest(
     val owner_address: String,

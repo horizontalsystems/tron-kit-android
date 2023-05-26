@@ -27,6 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.math.BigInteger
 import java.security.Security
@@ -38,7 +39,8 @@ class TronKit(
     private val accountInfoManager: AccountInfoManager,
     private val transactionManager: TransactionManager,
     private val transactionSender: TransactionSender,
-    private val feeProvider: FeeProvider
+    private val feeProvider: FeeProvider,
+    private val chainParameterManager: ChainParameterManager
 ) {
     private var started = false
     private var scope: CoroutineScope? = null
@@ -71,6 +73,10 @@ class TronKit(
         scope = CoroutineScope(Dispatchers.IO)
             .apply {
                 syncer.start(this)
+
+                launch {
+                    chainParameterManager.sync()
+                }
             }
     }
 
@@ -137,6 +143,17 @@ class TronKit(
         transactionManager.handle(createdTransaction)
 
         return response.txid
+    }
+
+    fun statusInfo(): Map<String, Any> {
+        val statusInfo = LinkedHashMap<String, Any>()
+
+        statusInfo["Started"] = started
+        statusInfo["Last Block Height"] = lastBlockHeight
+        statusInfo["Sync State"] = syncState
+        statusInfo["Chain Parameters Sync State"] = chainParameterManager.syncState
+
+        return statusInfo
     }
 
     sealed class SyncState {
@@ -225,10 +242,10 @@ class TronKit(
             val transactionManager = TransactionManager(address, storage, decorationManager, Gson())
             val syncer = Syncer(address, syncTimer, tronGridService, accountInfoManager, transactionManager, storage)
             val transactionSender = TransactionSender(tronGridService)
-            val chainParameterManager = ChainParameterManager()
+            val chainParameterManager = ChainParameterManager(tronGridService, storage)
             val feeProvider = FeeProvider(tronGridService, chainParameterManager)
 
-            return TronKit(address, syncer, accountInfoManager, transactionManager, transactionSender, feeProvider)
+            return TronKit(address, syncer, accountInfoManager, transactionManager, transactionSender, feeProvider, chainParameterManager)
         }
 
         private fun getDatabaseName(network: Network, walletId: String): String {

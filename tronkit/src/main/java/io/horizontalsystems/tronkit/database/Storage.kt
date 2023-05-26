@@ -2,6 +2,7 @@ package io.horizontalsystems.tronkit.database
 
 import androidx.sqlite.db.SimpleSQLiteQuery
 import io.horizontalsystems.tronkit.models.Balance
+import io.horizontalsystems.tronkit.models.ChainParameter
 import io.horizontalsystems.tronkit.models.InternalTransaction
 import io.horizontalsystems.tronkit.models.LastBlockHeight
 import io.horizontalsystems.tronkit.models.Transaction
@@ -146,6 +147,14 @@ class Storage(
 
     fun markTransactionsAsProcessed() {
         database.transactionDao().markTransactionsAsProcessed()
+    }
+
+    fun getChainParameter(key: String): ChainParameter? {
+        return database.chainParameterDao().getChainParameter(key)
+    }
+
+    fun saveChainParameters(chainParameters: List<ChainParameter>) {
+        database.chainParameterDao().insert(chainParameters)
     }
 
     private fun trxBalanceId() = "TRX"
