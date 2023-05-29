@@ -1,13 +1,15 @@
 package io.horizontalsystems.tronkit
 
 import android.app.Application
+import android.content.Context
 import com.google.gson.Gson
 import io.horizontalsystems.hdwalletkit.Mnemonic
+import io.horizontalsystems.tronkit.account.AccountInfoManager
 import io.horizontalsystems.tronkit.contracts.ContractMethodHelper
 import io.horizontalsystems.tronkit.contracts.trc20.TransferMethod
 import io.horizontalsystems.tronkit.crypto.InternalBouncyCastleProvider
-import io.horizontalsystems.tronkit.database.MainDatabase
 import io.horizontalsystems.tronkit.database.Storage
+import io.horizontalsystems.tronkit.database.TronDatabaseManager
 import io.horizontalsystems.tronkit.decoration.DecorationManager
 import io.horizontalsystems.tronkit.decoration.trc20.Trc20TransactionDecorator
 import io.horizontalsystems.tronkit.models.Address
@@ -18,7 +20,6 @@ import io.horizontalsystems.tronkit.models.TriggerSmartContract
 import io.horizontalsystems.tronkit.network.ConnectionManager
 import io.horizontalsystems.tronkit.network.Network
 import io.horizontalsystems.tronkit.network.TronGridService
-import io.horizontalsystems.tronkit.account.AccountInfoManager
 import io.horizontalsystems.tronkit.sync.ChainParameterManager
 import io.horizontalsystems.tronkit.sync.SyncTimer
 import io.horizontalsystems.tronkit.sync.Syncer
@@ -214,6 +215,10 @@ class TronKit(
             Security.addProvider(InternalBouncyCastleProvider.getInstance())
         }
 
+        fun clear(context: Context, network: Network, walletId: String) {
+            TronDatabaseManager.clear(context, network, walletId)
+        }
+
         fun getInstance(
             application: Application,
             words: List<String>,
@@ -238,8 +243,8 @@ class TronKit(
         ): TronKit {
             val syncTimer = SyncTimer(120, ConnectionManager(application))
             val tronGridService = TronGridService(network, tronGridApiKey)
-            val databaseName = getDatabaseName(network, walletId)
-            val storage = Storage(MainDatabase.getInstance(application, databaseName))
+            val mainDatabase = TronDatabaseManager.getMainDatabase(application, network, walletId)
+            val storage = Storage(mainDatabase)
             val accountInfoManager = AccountInfoManager(storage)
             val decorationManager = DecorationManager(storage).apply {
                 addTransactionDecorator(Trc20TransactionDecorator(address))
@@ -251,10 +256,6 @@ class TronKit(
             val feeProvider = FeeProvider(tronGridService, chainParameterManager)
 
             return TronKit(address, syncer, accountInfoManager, transactionManager, transactionSender, feeProvider, chainParameterManager)
-        }
-
-        private fun getDatabaseName(network: Network, walletId: String): String {
-            return "Tron-${network.name}-$walletId"
         }
     }
 
