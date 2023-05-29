@@ -1,6 +1,6 @@
 package io.horizontalsystems.tronkit.contracts
 
-import io.horizontalsystems.tronkit.Address
+import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.crypto.Utils
 import io.horizontalsystems.tronkit.toBigInteger
 import io.horizontalsystems.tronkit.toInt

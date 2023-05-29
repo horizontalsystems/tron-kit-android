@@ -1,4 +1,4 @@
-package io.horizontalsystems.tronkit
+package io.horizontalsystems.tronkit.account
 
 import io.horizontalsystems.hdwalletkit.Base58
 import io.horizontalsystems.hdwalletkit.Utils

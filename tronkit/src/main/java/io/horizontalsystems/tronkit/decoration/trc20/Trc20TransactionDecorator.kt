@@ -1,6 +1,6 @@
 package io.horizontalsystems.tronkit.decoration.trc20
 
-import io.horizontalsystems.tronkit.Address
+import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.contracts.trc20.ApproveMethod
 import io.horizontalsystems.tronkit.contracts.ContractMethodFactories
 import io.horizontalsystems.tronkit.contracts.trc20.ApproveMethodFactory

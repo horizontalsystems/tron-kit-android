@@ -1,8 +1,7 @@
-package io.horizontalsystems.tronkit.sync
+package io.horizontalsystems.tronkit.transaction
 
 import android.util.Log
 import com.google.protobuf.ByteString
-import io.horizontalsystems.tronkit.Signer
 import io.horizontalsystems.tronkit.TronKit.TransactionError
 import io.horizontalsystems.tronkit.models.Contract
 import io.horizontalsystems.tronkit.models.TransferContract

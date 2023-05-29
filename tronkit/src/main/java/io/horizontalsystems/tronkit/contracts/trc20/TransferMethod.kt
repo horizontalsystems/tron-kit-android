@@ -1,6 +1,6 @@
 package io.horizontalsystems.tronkit.contracts.trc20
 
-import io.horizontalsystems.tronkit.Address
+import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.contracts.ContractMethod
 import java.math.BigInteger
 

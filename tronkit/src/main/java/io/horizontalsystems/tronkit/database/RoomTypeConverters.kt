@@ -1,7 +1,7 @@
 package io.horizontalsystems.tronkit.database
 
 import androidx.room.TypeConverter
-import io.horizontalsystems.tronkit.Address
+import io.horizontalsystems.tronkit.models.Address
 import java.math.BigInteger
 
 class RoomTypeConverters {

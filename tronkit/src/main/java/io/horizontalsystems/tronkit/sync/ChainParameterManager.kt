@@ -1,5 +1,6 @@
-package io.horizontalsystems.tronkit
+package io.horizontalsystems.tronkit.sync
 
+import io.horizontalsystems.tronkit.TronKit
 import io.horizontalsystems.tronkit.database.Storage
 import io.horizontalsystems.tronkit.network.TronGridService
 

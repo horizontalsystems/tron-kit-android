@@ -1,6 +1,6 @@
 package io.horizontalsystems.tronkit.decoration
 
-import io.horizontalsystems.tronkit.Address
+import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.models.InternalTransaction
 import io.horizontalsystems.tronkit.models.TransactionTag
 import io.horizontalsystems.tronkit.models.TriggerSmartContract

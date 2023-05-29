@@ -4,7 +4,7 @@ import com.google.gson.TypeAdapter
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
-import io.horizontalsystems.tronkit.Address
+import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.hexStringToBigIntegerOrNull
 import io.horizontalsystems.tronkit.hexStringToByteArrayOrNull
 import io.horizontalsystems.tronkit.hexStringToIntOrNull

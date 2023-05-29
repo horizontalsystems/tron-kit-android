@@ -1,6 +1,6 @@
 package io.horizontalsystems.tronkit.decoration.trc20
 
-import io.horizontalsystems.tronkit.Address
+import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.decoration.Event
 import io.horizontalsystems.tronkit.decoration.TokenInfo
 import io.horizontalsystems.tronkit.models.TransactionTag

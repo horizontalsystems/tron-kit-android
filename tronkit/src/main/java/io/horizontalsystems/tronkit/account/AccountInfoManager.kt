@@ -1,4 +1,4 @@
-package io.horizontalsystems.tronkit.sync
+package io.horizontalsystems.tronkit.account
 
 import io.horizontalsystems.tronkit.database.Storage
 import io.horizontalsystems.tronkit.models.AccountInfo

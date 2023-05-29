@@ -1,8 +1,8 @@
-package io.horizontalsystems.tronkit.sync
+package io.horizontalsystems.tronkit.transaction
 
 import android.util.Log
 import com.google.gson.Gson
-import io.horizontalsystems.tronkit.Address
+import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.database.Storage
 import io.horizontalsystems.tronkit.decoration.DecorationManager
 import io.horizontalsystems.tronkit.hexStringToByteArray

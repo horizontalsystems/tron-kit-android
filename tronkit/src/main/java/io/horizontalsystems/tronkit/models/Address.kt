@@ -1,6 +1,9 @@
-package io.horizontalsystems.tronkit
+package io.horizontalsystems.tronkit.models
 
+import io.horizontalsystems.tronkit.account.AddressHandler
+import io.horizontalsystems.tronkit.hexStringToByteArray
 import io.horizontalsystems.tronkit.network.Network
+import io.horizontalsystems.tronkit.toRawHexString
 
 data class Address(
     val raw: ByteArray

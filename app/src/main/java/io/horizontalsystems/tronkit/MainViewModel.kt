@@ -8,8 +8,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.horizontalsystems.hdwalletkit.Mnemonic
+import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.models.FullTransaction
 import io.horizontalsystems.tronkit.network.Network
+import io.horizontalsystems.tronkit.transaction.Fee
+import io.horizontalsystems.tronkit.transaction.Signer
 import kotlinx.coroutines.launch
 import java.math.BigInteger
 

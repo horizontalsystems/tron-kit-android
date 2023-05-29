@@ -1,12 +1,16 @@
-package io.horizontalsystems.tronkit
+package io.horizontalsystems.tronkit.transaction
 
 import android.util.Log
 import com.google.protobuf.ByteString
+import io.horizontalsystems.tronkit.TronKit
+import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.models.Contract
 import io.horizontalsystems.tronkit.models.TransferAssetContract
 import io.horizontalsystems.tronkit.models.TransferContract
 import io.horizontalsystems.tronkit.models.TriggerSmartContract
 import io.horizontalsystems.tronkit.network.TronGridService
+import io.horizontalsystems.tronkit.sync.ChainParameterManager
+import io.horizontalsystems.tronkit.toRawHexString
 import org.tron.protos.Protocol.Transaction
 
 

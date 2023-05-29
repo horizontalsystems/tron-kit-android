@@ -1,6 +1,6 @@
 package io.horizontalsystems.tronkit.decoration
 
-import io.horizontalsystems.tronkit.Address
+import io.horizontalsystems.tronkit.models.Address
 
 open class Event(
     val transactionHash: ByteArray,

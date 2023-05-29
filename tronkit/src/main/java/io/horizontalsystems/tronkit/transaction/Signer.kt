@@ -1,11 +1,14 @@
-package io.horizontalsystems.tronkit
+package io.horizontalsystems.tronkit.transaction
 
 import android.util.Log
 import io.horizontalsystems.hdwalletkit.ECKey
 import io.horizontalsystems.hdwalletkit.HDWallet
 import io.horizontalsystems.tronkit.crypto.Utils
+import io.horizontalsystems.tronkit.hexStringToByteArray
+import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.network.CreatedTransaction
 import io.horizontalsystems.tronkit.network.Network
+import io.horizontalsystems.tronkit.toRawHexString
 import java.math.BigInteger
 
 class Signer(

@@ -10,6 +10,7 @@ import io.horizontalsystems.tronkit.database.MainDatabase
 import io.horizontalsystems.tronkit.database.Storage
 import io.horizontalsystems.tronkit.decoration.DecorationManager
 import io.horizontalsystems.tronkit.decoration.trc20.Trc20TransactionDecorator
+import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.models.Contract
 import io.horizontalsystems.tronkit.models.FullTransaction
 import io.horizontalsystems.tronkit.models.TransferContract
@@ -17,11 +18,15 @@ import io.horizontalsystems.tronkit.models.TriggerSmartContract
 import io.horizontalsystems.tronkit.network.ConnectionManager
 import io.horizontalsystems.tronkit.network.Network
 import io.horizontalsystems.tronkit.network.TronGridService
-import io.horizontalsystems.tronkit.sync.AccountInfoManager
+import io.horizontalsystems.tronkit.account.AccountInfoManager
+import io.horizontalsystems.tronkit.sync.ChainParameterManager
 import io.horizontalsystems.tronkit.sync.SyncTimer
 import io.horizontalsystems.tronkit.sync.Syncer
-import io.horizontalsystems.tronkit.sync.TransactionManager
-import io.horizontalsystems.tronkit.sync.TransactionSender
+import io.horizontalsystems.tronkit.transaction.Fee
+import io.horizontalsystems.tronkit.transaction.FeeProvider
+import io.horizontalsystems.tronkit.transaction.Signer
+import io.horizontalsystems.tronkit.transaction.TransactionManager
+import io.horizontalsystems.tronkit.transaction.TransactionSender
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
