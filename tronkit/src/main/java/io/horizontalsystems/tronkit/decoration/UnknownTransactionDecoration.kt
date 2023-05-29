@@ -8,12 +8,11 @@ import java.math.BigInteger
 
 open class UnknownTransactionDecoration(
     val fromAddress: Address?,
-    private val toAddress: Address?,
-
-    private val value: BigInteger?,
-    private val tokenValue: BigInteger?,
-    private val tokenId: Int?,
-
+    val toAddress: Address?,
+    val value: BigInteger?,
+    val data: String?,
+    val tokenValue: BigInteger?,
+    val tokenId: Int?,
     val internalTransactions: List<InternalTransaction>,
     val events: List<Event>
 ) : TransactionDecoration() {
@@ -26,6 +25,7 @@ open class UnknownTransactionDecoration(
         fromAddress = contract?.ownerAddress,
         toAddress = contract?.contractAddress,
         value = contract?.callValue,
+        data = contract?.data,
         tokenValue = contract?.callTokenValue,
         tokenId = contract?.tokenId,
         internalTransactions = internalTransactions,
