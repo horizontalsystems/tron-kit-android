@@ -6,7 +6,7 @@ import io.horizontalsystems.tronkit.models.TransactionTag
 import io.horizontalsystems.tronkit.models.TriggerSmartContract
 import java.math.BigInteger
 
-open class UnknownTransactionDecoration(
+class UnknownTransactionDecoration(
     val fromAddress: Address?,
     val toAddress: Address?,
     val value: BigInteger?,

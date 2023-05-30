@@ -94,6 +94,10 @@ class TronKit(
         scope?.cancel()
     }
 
+    fun refresh() {
+        syncer.refresh()
+    }
+
     fun getFullTransactionsFlow(tags: List<List<String>>): Flow<List<FullTransaction>> {
         return transactionManager.getFullTransactionsFlow(tags)
     }

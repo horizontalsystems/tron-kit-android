@@ -60,6 +60,17 @@ class Syncer(
         syncTimer.stop()
     }
 
+    fun refresh() {
+        when (syncTimer.state) {
+            SyncTimer.State.Ready -> {
+                sync()
+            }
+            is SyncTimer.State.NotReady -> {
+                scope?.let { syncTimer.start(this, it) }
+            }
+        }
+    }
+
     override fun onUpdateSyncTimerState(state: SyncTimer.State) {
         syncState = when (state) {
             is SyncTimer.State.NotReady -> {
