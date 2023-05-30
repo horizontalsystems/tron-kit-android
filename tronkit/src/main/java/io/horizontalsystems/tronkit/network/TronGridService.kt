@@ -72,7 +72,7 @@ class TronGridService(
         val response = service.accountInfo(address)
         val data = response.data.firstOrNull() ?: throw TronGridServiceError.NoAccountInfoData
 
-        return AccountInfo(data.balance)
+        return AccountInfo(data.balance ?: BigInteger.ZERO)
     }
 
     suspend fun getTransactions(
@@ -491,7 +491,7 @@ data class AccountInfoData(
     val address: String,
     val create_time: Long,
     val latest_opration_time: Long,
-    val balance: BigInteger
+    val balance: BigInteger?
 )
 
 data class AccountResource(

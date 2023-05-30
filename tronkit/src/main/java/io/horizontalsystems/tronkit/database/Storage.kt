@@ -87,7 +87,7 @@ class Storage(
                                 tx.timestamp < ${fromTransaction.timestamp} OR 
                                 (
                                     tx.timestamp = ${fromTransaction.timestamp} AND 
-                                    HEX(tx.hash) < "${fromTransaction.hashString}
+                                    HEX(tx.hash) < "${fromTransaction.hashString}"
                                 )
                            )
                            """
