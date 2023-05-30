@@ -41,6 +41,7 @@ import java.util.Objects
 
 class TronKit(
     val address: Address,
+    val network: Network,
     private val syncer: Syncer,
     private val accountInfoManager: AccountInfoManager,
     private val transactionManager: TransactionManager,
@@ -255,7 +256,7 @@ class TronKit(
             val chainParameterManager = ChainParameterManager(tronGridService, storage)
             val feeProvider = FeeProvider(tronGridService, chainParameterManager)
 
-            return TronKit(address, syncer, accountInfoManager, transactionManager, transactionSender, feeProvider, chainParameterManager)
+            return TronKit(address, network, syncer, accountInfoManager, transactionManager, transactionSender, feeProvider, chainParameterManager)
         }
     }
 
