@@ -128,7 +128,7 @@ sealed class Contract {
                     "FreezeBalanceV2Contract" -> {
                         val value = contract.parameter.value
                         FreezeBalanceV2Contract(
-                            resource = value.resource!!,
+                            resource = value.resource ?: "",
                             ownerAddress = contract.ownerAddress!!,
                             frozenBalance = value.frozen_balance!!
                         )

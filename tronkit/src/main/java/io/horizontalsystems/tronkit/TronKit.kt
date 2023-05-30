@@ -16,6 +16,7 @@ import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.models.Contract
 import io.horizontalsystems.tronkit.models.FullTransaction
 import io.horizontalsystems.tronkit.models.TransferContract
+import io.horizontalsystems.tronkit.models.Trc20Balance
 import io.horizontalsystems.tronkit.models.TriggerSmartContract
 import io.horizontalsystems.tronkit.network.ConnectionManager
 import io.horizontalsystems.tronkit.network.Network
@@ -96,6 +97,14 @@ class TronKit(
 
     fun refresh() {
         syncer.refresh()
+    }
+
+    fun getTrc20Balance(contractAddress: String): BigInteger {
+        return accountInfoManager.getTrc20Balance(contractAddress)
+    }
+
+    fun getTrc20BalanceFlow(contractAddress: String): Flow<BigInteger> {
+        return accountInfoManager.getTrc20BalanceFlow(contractAddress)
     }
 
     fun getFullTransactionsFlow(tags: List<List<String>>): Flow<List<FullTransaction>> {
@@ -246,7 +255,7 @@ class TronKit(
             tronGridApiKey: String,
             walletId: String
         ): TronKit {
-            val syncTimer = SyncTimer(120, ConnectionManager(application))
+            val syncTimer = SyncTimer(30, ConnectionManager(application))
             val tronGridService = TronGridService(network, tronGridApiKey)
             val mainDatabase = TronDatabaseManager.getMainDatabase(application, network, walletId)
             val storage = Storage(mainDatabase)

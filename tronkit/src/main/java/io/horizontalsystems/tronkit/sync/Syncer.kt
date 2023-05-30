@@ -107,12 +107,13 @@ class Syncer(
         try {
             val transactionSyncTimestamp = storage.getTransactionSyncBlockTimestamp() ?: 0
             val contractTransactionSyncTimestamp = storage.getContractTransactionSyncBlockTimestamp() ?: 0
+            val initial = transactionSyncTimestamp == 0L || contractTransactionSyncTimestamp == 0L
 
             syncAccountInfo()
             syncTransactions(transactionSyncTimestamp)
             syncContractTransactions(contractTransactionSyncTimestamp)
 
-            transactionManager.process(initial = transactionSyncTimestamp == 0L || contractTransactionSyncTimestamp == 0L)
+            transactionManager.process(initial)
 
             syncState = SyncState.Synced()
 

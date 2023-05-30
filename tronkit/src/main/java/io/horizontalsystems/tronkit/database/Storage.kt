@@ -8,6 +8,7 @@ import io.horizontalsystems.tronkit.models.LastBlockHeight
 import io.horizontalsystems.tronkit.models.Transaction
 import io.horizontalsystems.tronkit.models.TransactionSyncState
 import io.horizontalsystems.tronkit.models.TransactionTag
+import io.horizontalsystems.tronkit.models.Trc20Balance
 import io.horizontalsystems.tronkit.models.Trc20EventRecord
 import java.math.BigInteger
 
@@ -26,8 +27,17 @@ class Storage(
         return database.balanceDao().getBalance(trxBalanceId())?.balance
     }
 
-    fun saveTrxBalance(balance: BigInteger) {
-        database.balanceDao().insert(Balance(trxBalanceId(), balance))
+    fun saveBalances(trxBalance: BigInteger, balances: List<Trc20Balance>) {
+        database.runInTransaction {
+            database.balanceDao().deleteAll()
+
+            database.balanceDao().insert(Balance(trxBalanceId(), trxBalance))
+            database.balanceDao().insert(balances.map { (contractAddress, balance) -> Balance(trc20BalanceId(contractAddress), balance) })
+        }
+    }
+
+    fun getTrc20Balance(contractAddress: String): BigInteger? {
+        return database.balanceDao().getBalance(trc20BalanceId(contractAddress))?.balance
     }
 
     fun getTransactionSyncBlockTimestamp(): Long? {
@@ -87,7 +97,7 @@ class Storage(
                                 tx.timestamp < ${fromTransaction.timestamp} OR 
                                 (
                                     tx.timestamp = ${fromTransaction.timestamp} AND 
-                                    HEX(tx.hash) < "${fromTransaction.hashString}"
+                                    LOWER(HEX(tx.hash)) < "${fromTransaction.hashString.lowercase()}"
                                 )
                            )
                            """

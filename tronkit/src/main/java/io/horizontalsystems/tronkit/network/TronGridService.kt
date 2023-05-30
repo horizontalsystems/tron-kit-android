@@ -5,9 +5,10 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
-import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.models.AccountInfo
+import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.models.ChainParameter
+import io.horizontalsystems.tronkit.models.Trc20Balance
 import io.horizontalsystems.tronkit.rpc.*
 import io.horizontalsystems.tronkit.toRawHexString
 import okhttp3.Interceptor
@@ -72,7 +73,13 @@ class TronGridService(
         val response = service.accountInfo(address)
         val data = response.data.firstOrNull() ?: throw TronGridServiceError.NoAccountInfoData
 
-        return AccountInfo(data.balance ?: BigInteger.ZERO)
+        val trc20Balances = data.trc20.map { balanceMap ->
+            balanceMap.map { (contractAddress, balance) ->
+                Trc20Balance(contractAddress, BigInteger(balance))
+            }
+        }.flatten()
+
+        return AccountInfo(data.balance ?: BigInteger.ZERO, trc20Balances)
     }
 
     suspend fun getTransactions(
@@ -491,7 +498,8 @@ data class AccountInfoData(
     val address: String,
     val create_time: Long,
     val latest_opration_time: Long,
-    val balance: BigInteger?
+    val balance: BigInteger?,
+    val trc20: List<Map<String, String>>
 )
 
 data class AccountResource(
