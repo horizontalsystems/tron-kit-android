@@ -10,6 +10,7 @@ data class Transaction(
     @PrimaryKey
     val hash: ByteArray,
     val timestamp: Long,
+    val confirmed: Boolean,
     val isFailed: Boolean = false,
 
     val blockNumber: Long? = null,

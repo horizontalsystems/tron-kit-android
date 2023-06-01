@@ -85,9 +85,12 @@ class TronGridService(
     suspend fun getTransactions(
         address: String,
         startBlockTimestamp: Long,
-        fingerprint: String?
+        fingerprint: String?,
+        onlyConfirmed: Boolean,
+        limit: Int,
+        orderBy: String
     ): Pair<List<TransactionData>, String?> {
-        val response = service.transactions(address, startBlockTimestamp, fingerprint)
+        val response = service.transactions(address, startBlockTimestamp, fingerprint, onlyConfirmed, limit, orderBy)
 
         check(response.success) { "transactions" }
 
@@ -105,9 +108,12 @@ class TronGridService(
     suspend fun getContractTransactions(
         address: String,
         startBlockTimestamp: Long,
-        fingerprint: String?
+        fingerprint: String?,
+        onlyConfirmed: Boolean,
+        limit: Int,
+        orderBy: String
     ): Pair<List<ContractTransactionData>, String?> {
-        val response = service.contractTransactions(address, startBlockTimestamp, fingerprint)
+        val response = service.contractTransactions(address, startBlockTimestamp, fingerprint, onlyConfirmed, limit, orderBy)
 
         check(response.success) { "contractTransactions error" }
 
@@ -128,7 +134,7 @@ class TronGridService(
         )
         Log.e("e", "to json: ${gson.toJson(response)}")
 
-        checkNotNull(response.Error) { "createTransaction error: ${response.Error}" }
+        check(response.Error == null) { "createTransaction error: ${response.Error}" }
 
         return response
     }
@@ -223,10 +229,6 @@ class TronGridService(
     }
 
     private interface TronGridExtensionAPI {
-        companion object {
-            private const val limit = 200
-            private const val orderBy = "block_timestamp,asc"
-        }
 
         @GET("v1/accounts/{address}")
         suspend fun accountInfo(
@@ -238,8 +240,9 @@ class TronGridService(
             @Path("address") address: String,
             @Query("min_timestamp") startBlockTimestamp: Long,
             @Query("fingerprint") fingerprint: String?,
-            @Query("limit") limit: Int = Companion.limit,
-            @Query("order_by") orderBy: String = Companion.orderBy
+            @Query("only_confirmed") onlyConfirmed: Boolean,
+            @Query("limit") limit: Int,
+            @Query("order_by") orderBy: String
         ): TransactionsResponse
 
         @GET("v1/accounts/{address}/transactions/trc20")
@@ -247,8 +250,9 @@ class TronGridService(
             @Path("address") address: String,
             @Query("min_timestamp") startBlockTimestamp: Long,
             @Query("fingerprint") fingerprint: String?,
-            @Query("limit") limit: Int = Companion.limit,
-            @Query("order_by") orderBy: String = Companion.orderBy
+            @Query("only_confirmed") onlyConfirmed: Boolean,
+            @Query("limit") limit: Int,
+            @Query("order_by") orderBy: String
         ): ContractTransactionsResponse
 
         @POST("wallet/createtransaction")

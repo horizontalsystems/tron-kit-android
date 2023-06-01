@@ -2,10 +2,10 @@ package io.horizontalsystems.tronkit.transaction
 
 import android.util.Log
 import com.google.gson.Gson
-import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.database.Storage
 import io.horizontalsystems.tronkit.decoration.DecorationManager
 import io.horizontalsystems.tronkit.hexStringToByteArray
+import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.models.FullTransaction
 import io.horizontalsystems.tronkit.models.InternalTransaction
 import io.horizontalsystems.tronkit.models.Transaction
@@ -63,7 +63,8 @@ class TransactionManager(
         val transaction = Transaction(
             hash = createdTransaction.txID.hexStringToByteArray(),
             timestamp = createdTransaction.raw_data.timestamp,
-            contractsRaw = gson.toJson(createdTransaction.raw_data.contract)
+            contractsRaw = gson.toJson(createdTransaction.raw_data.contract),
+            confirmed = false
         )
         storage.saveTransactions(listOf(transaction))
 
@@ -96,7 +97,7 @@ class TransactionManager(
         storage.markTransactionsAsProcessed()
     }
 
-    fun saveTransactionData(transactionData: List<TransactionData>) {
+    fun saveTransactionData(transactionData: List<TransactionData>, confirmed: Boolean) {
         Log.e("e", "TransactionManager handleTransactions(): ${transactionData.size}")
 
         val transactions = mutableListOf<Transaction>()
@@ -126,7 +127,8 @@ class TransactionManager(
                                 listOf(
                                     Transaction(
                                         hash = txData.tx_id.hexStringToByteArray(),
-                                        timestamp = txData.block_timestamp
+                                        timestamp = txData.block_timestamp,
+                                        confirmed = confirmed
                                     )
                                 )
                             )
@@ -147,7 +149,8 @@ class TransactionManager(
                                 energyUsage = txData.energy_usage,
                                 energyFee = txData.energy_fee,
                                 energyUsageTotal = txData.energy_usage_total,
-                                contractsRaw = gson.toJson(contractsWithWithdrawAmount(txData))
+                                contractsRaw = gson.toJson(contractsWithWithdrawAmount(txData)),
+                                confirmed = confirmed
                             )
                         )
                     }
@@ -179,7 +182,7 @@ class TransactionManager(
         }
     }
 
-    fun saveContractTransactionData(transactionData: List<ContractTransactionData>) {
+    fun saveContractTransactionData(transactionData: List<ContractTransactionData>, confirmed: Boolean) {
         Log.e("e", "TransactionManager handleContractTransactions(): ${transactionData.size}")
 
         //TODO handle TRC721 transactions
@@ -191,7 +194,8 @@ class TransactionManager(
                 transactions.add(
                     Transaction(
                         hash = it.transaction_id.hexStringToByteArray(),
-                        timestamp = it.block_timestamp
+                        timestamp = it.block_timestamp,
+                        confirmed = confirmed
                     )
                 )
 

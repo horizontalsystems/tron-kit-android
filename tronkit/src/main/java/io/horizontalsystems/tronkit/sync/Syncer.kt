@@ -1,11 +1,11 @@
 package io.horizontalsystems.tronkit.sync
 
 import android.util.Log
-import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.TronKit.SyncError
 import io.horizontalsystems.tronkit.TronKit.SyncState
 import io.horizontalsystems.tronkit.account.AccountInfoManager
 import io.horizontalsystems.tronkit.database.Storage
+import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.network.TronGridService
 import io.horizontalsystems.tronkit.transaction.TransactionManager
 import kotlinx.coroutines.CoroutineScope
@@ -22,6 +22,12 @@ class Syncer(
     private val transactionManager: TransactionManager,
     private val storage: Storage
 ) : SyncTimer.Listener {
+
+    companion object {
+        private const val onlyConfirmed = true
+        private const val limit = 200
+        private const val orderBy = "block_timestamp,asc"
+    }
 
     private var scope: CoroutineScope? = null
 
@@ -65,6 +71,7 @@ class Syncer(
             SyncTimer.State.Ready -> {
                 sync()
             }
+
             is SyncTimer.State.NotReady -> {
                 scope?.let { syncTimer.start(this, it) }
             }
@@ -133,12 +140,19 @@ class Syncer(
 
         var fingerprint: String? = null
         do {
-            val response = tronGridService.getTransactions(address.base58, syncBlockTimestamp + 1000, fingerprint)
+            val response = tronGridService.getTransactions(
+                address = address.base58,
+                startBlockTimestamp = syncBlockTimestamp + 1000,
+                fingerprint = fingerprint,
+                onlyConfirmed = onlyConfirmed,
+                limit = limit,
+                orderBy = orderBy
+            )
             val transactionData = response.first
             fingerprint = response.second
 
             if (transactionData.isNotEmpty()) {
-                transactionManager.saveTransactionData(transactionData)
+                transactionManager.saveTransactionData(transactionData, onlyConfirmed)
 
                 storage.saveTransactionSyncTimestamp(transactionData.last().block_timestamp)
             }
@@ -150,12 +164,19 @@ class Syncer(
 
         var fingerprint: String? = null
         do {
-            val response = tronGridService.getContractTransactions(address.base58, syncBlockTimestamp + 1000, fingerprint)
+            val response = tronGridService.getContractTransactions(
+                address = address.base58,
+                startBlockTimestamp = syncBlockTimestamp + 1000,
+                fingerprint = fingerprint,
+                onlyConfirmed = onlyConfirmed,
+                limit = limit,
+                orderBy = orderBy
+            )
             val transactionData = response.first
             fingerprint = response.second
 
             if (transactionData.isNotEmpty()) {
-                transactionManager.saveContractTransactionData(transactionData)
+                transactionManager.saveContractTransactionData(transactionData, onlyConfirmed)
 
                 storage.saveContractTransactionSyncTimestamp(transactionData.last().block_timestamp)
             }

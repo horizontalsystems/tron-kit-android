@@ -16,7 +16,6 @@ import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.models.Contract
 import io.horizontalsystems.tronkit.models.FullTransaction
 import io.horizontalsystems.tronkit.models.TransferContract
-import io.horizontalsystems.tronkit.models.Trc20Balance
 import io.horizontalsystems.tronkit.models.TriggerSmartContract
 import io.horizontalsystems.tronkit.network.ConnectionManager
 import io.horizontalsystems.tronkit.network.Network
@@ -144,9 +143,9 @@ class TronKit(
             data = data,
             ownerAddress = address,
             contractAddress = contractAddress,
-            callTokenValue = null, //??
-            callValue = null, //??
-            tokenId = null, //??
+            callTokenValue = null,
+            callValue = null,
+            tokenId = null,
             functionSelector = TransferMethod.methodSignature,
             parameter = parameter
         )
