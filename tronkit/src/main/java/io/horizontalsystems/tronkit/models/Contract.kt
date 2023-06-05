@@ -13,6 +13,30 @@ import java.math.BigInteger
 
 sealed class Contract {
 
+    val label: String by lazy {
+        when (this) {
+            is AssetIssueContract -> "Issue TRC10 token"
+            is CreateSmartContract -> "Create Smart Contract"
+            is FreezeBalanceV2Contract -> "TRX Stake 2.0"
+            is TransferAssetContract -> "Transfer TRC10 Token"
+            is TransferContract -> "TRX Transfer"
+            is TriggerSmartContract -> "Trigger Smart Contract"
+            is UnfreezeBalanceV2Contract -> "TRX Unstake 2.0"
+            is VoteWitnessContract -> "Vote"
+            is WithdrawBalanceContract -> "Claim Rewards"
+            is Unknown -> type?.parseContractType() ?: this.javaClass.simpleName
+        }
+    }
+
+    private fun String.parseContractType(): String {
+        val split = split("(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])".toRegex())
+        return if (split.size > 1) {
+            split.dropLast(1).joinToString(separator = " ")
+        } else {
+            split.joinToString(separator = " ")
+        }
+    }
+
     val proto: Protocol.Transaction.Contract
         get() = when (this) {
             is TransferContract -> {
@@ -153,7 +177,7 @@ sealed class Contract {
 
                     else -> {
                         Log.e("e", "unknown contract: $contractsJson")
-                        Unknown(contractsJson)
+                        Unknown(contract?.type, contractsJson)
                     }
                 }
             } catch (error: Throwable) {
@@ -166,6 +190,7 @@ sealed class Contract {
 }
 
 data class Unknown(
+    val type: String?,
     val contractsRaw: String
 ) : Contract()
 
