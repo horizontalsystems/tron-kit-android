@@ -73,6 +73,9 @@ class TronKit(
     val transactionsFlow: StateFlow<Pair<List<FullTransaction>, Boolean>>
         get() = transactionManager.transactionsFlow
 
+    val isAccountActive: Boolean
+        get() = accountInfoManager.isAccountActive
+
     fun start() {
         if (started) return
         started = true
@@ -120,6 +123,10 @@ class TronKit(
 
     suspend fun estimateFee(contract: Contract): List<Fee> {
         return feeProvider.estimateFee(contract)
+    }
+
+    suspend fun isAccountActive(address: Address): Boolean {
+        return feeProvider.isAccountActive(address)
     }
 
     fun transferContract(amount: BigInteger, toAddress: Address) = TransferContract(

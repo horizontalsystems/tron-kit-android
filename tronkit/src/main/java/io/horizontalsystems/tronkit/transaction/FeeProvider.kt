@@ -48,7 +48,7 @@ class FeeProvider(
 
     private val MAX_RESULT_SIZE_IN_TX: Long = 64
 
-    private suspend fun isAccountActive(address: Address) = try {
+    suspend fun isAccountActive(address: Address) = try {
         tronGridService.getAccountInfo(address.base58)
         true
     } catch (error: TronGridService.TronGridServiceError.NoAccountInfoData) {

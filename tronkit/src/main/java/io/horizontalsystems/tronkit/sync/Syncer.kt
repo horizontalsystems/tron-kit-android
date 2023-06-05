@@ -7,6 +7,7 @@ import io.horizontalsystems.tronkit.account.AccountInfoManager
 import io.horizontalsystems.tronkit.database.Storage
 import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.network.TronGridService
+import io.horizontalsystems.tronkit.network.TronGridService.*
 import io.horizontalsystems.tronkit.transaction.TransactionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -131,8 +132,12 @@ class Syncer(
     }
 
     private suspend fun syncAccountInfo() {
-        val accountInfo = tronGridService.getAccountInfo(address.base58)
-        accountInfoManager.handle(accountInfo)
+        try {
+            val accountInfo = tronGridService.getAccountInfo(address.base58)
+            accountInfoManager.handle(accountInfo)
+        } catch (error: TronGridServiceError.NoAccountInfoData) {
+            accountInfoManager.handleInactiveAccount()
+        }
     }
 
     private suspend fun syncTransactions(syncBlockTimestamp: Long) {
