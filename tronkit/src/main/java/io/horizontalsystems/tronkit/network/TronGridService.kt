@@ -69,6 +69,44 @@ class TronGridService(
         return rpc.parseResponse(rpcResponse, gsonRpc)
     }
 
+    suspend fun estimateEnergy(
+        ownerAddress: String,
+        contractAddress: String,
+        value: BigInteger,
+        data: String
+    ): Long {
+        val rpc = EstimateGasJsonRpc(
+            from = ownerAddress,
+            to = contractAddress,
+            amount = value,
+            gasLimit = 1,
+            gasPrice = 1,
+            data = data
+        )
+
+        rpc.id = currentRpcId.incrementAndGet()
+
+        val rpcResponse = rpcService.rpc(gsonRpc.toJson(rpc))
+        return rpc.parseResponse(rpcResponse, gsonRpc)
+    }
+
+
+    suspend fun ethCall(
+        contractAddress: String,
+        data: String
+    ): ByteArray {
+        val rpc = CallJsonRpc(
+            contractAddress = contractAddress,
+            data = data,
+            defaultBlockParameter = DefaultBlockParameter.Latest.raw
+        )
+        rpc.id = currentRpcId.incrementAndGet()
+
+        val rpcResponse = rpcService.rpc(gsonRpc.toJson(rpc))
+
+        return rpc.parseResponse(rpcResponse, gsonRpc)
+    }
+
     suspend fun getAccountInfo(address: String): AccountInfo {
         val response = service.accountInfo(address)
         val data = response.data.firstOrNull() ?: throw TronGridServiceError.NoAccountInfoData
@@ -139,27 +177,6 @@ class TronGridService(
         return response
     }
 
-    suspend fun estimateEnergy(
-        ownerAddress: String,
-        contractAddress: String,
-        value: BigInteger,
-        data: String
-    ): Long {
-        val rpc = EstimateGasJsonRpc(
-            from = ownerAddress,
-            to = contractAddress,
-            amount = value,
-            gasLimit = 1,
-            gasPrice = 1,
-            data = data
-        )
-
-        rpc.id = currentRpcId.incrementAndGet()
-
-        val rpcResponse = rpcService.rpc(gsonRpc.toJson(rpc))
-        return rpc.parseResponse(rpcResponse, gsonRpc)
-    }
-
     suspend fun triggerSmartContract(
         ownerAddress: Address,
         contractAddress: Address,
@@ -219,6 +236,7 @@ class TronGridService(
         .registerTypeAdapter(Long::class.java, LongTypeAdapter(isHex))
         .registerTypeAdapter(object : TypeToken<Long?>() {}.type, LongTypeAdapter(isHex))
         .registerTypeAdapter(Int::class.java, IntTypeAdapter(isHex))
+        .registerTypeAdapter(ByteArray::class.java, ByteArrayTypeAdapter())
         .create()
 
     private fun retrofit(httpClient: OkHttpClient.Builder, baseUrl: String, gson: Gson): Retrofit = Retrofit.Builder()
