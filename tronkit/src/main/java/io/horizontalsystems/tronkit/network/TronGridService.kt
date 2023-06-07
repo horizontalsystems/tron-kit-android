@@ -139,19 +139,25 @@ class TronGridService(
         return response
     }
 
-    suspend fun estimateEnergy(ownerAddress: String, contractAddress: String, functionSelector: String, parameter: String): Long {
-        val response = service.estimateEnergy(
-            EstimateEnergyRequest(
-                owner_address = ownerAddress,
-                contract_address = contractAddress,
-                function_selector = functionSelector,
-                parameter = parameter
-            )
+    suspend fun estimateEnergy(
+        ownerAddress: String,
+        contractAddress: String,
+        value: BigInteger,
+        data: String
+    ): Long {
+        val rpc = EstimateGasJsonRpc(
+            from = ownerAddress,
+            to = contractAddress,
+            amount = value,
+            gasLimit = 1,
+            gasPrice = 1,
+            data = data
         )
 
-        check(response.result.result) { "estimateEnergy error: ${response.result.code} - ${response.result.message}" }
+        rpc.id = currentRpcId.incrementAndGet()
 
-        return response.energy_required
+        val rpcResponse = rpcService.rpc(gsonRpc.toJson(rpc))
+        return rpc.parseResponse(rpcResponse, gsonRpc)
     }
 
     suspend fun triggerSmartContract(

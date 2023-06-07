@@ -12,6 +12,7 @@ import io.horizontalsystems.tronkit.network.TronGridService
 import io.horizontalsystems.tronkit.sync.ChainParameterManager
 import io.horizontalsystems.tronkit.toRawHexString
 import org.tron.protos.Protocol.Transaction
+import java.math.BigInteger
 
 
 sealed class Fee {
@@ -103,10 +104,10 @@ class FeeProvider(
 
             is TriggerSmartContract -> {
                 val energyRequired = tronGridService.estimateEnergy(
-                    ownerAddress = contract.ownerAddress.hex,
-                    contractAddress = contract.contractAddress.hex,
-                    functionSelector = contract.functionSelector ?: throw TronKit.TransactionError.NoFunctionSelector(contract),
-                    parameter = contract.parameter ?: throw TronKit.TransactionError.NoParameter(contract)
+                    ownerAddress = "0x${contract.ownerAddress.hex}",
+                    contractAddress = "0x${contract.contractAddress.hex}",
+                    value = contract.callValue ?: BigInteger.ZERO,
+                    data = "0x${contract.data}"
                 )
                 val feeEnergy = Fee.Energy(required = energyRequired, price = chainParameterManager.energyFee)
                 fees.add(feeEnergy)
