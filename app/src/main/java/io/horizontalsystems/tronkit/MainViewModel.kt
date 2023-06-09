@@ -11,6 +11,7 @@ import io.horizontalsystems.hdwalletkit.Mnemonic
 import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.models.FullTransaction
 import io.horizontalsystems.tronkit.network.Network
+import io.horizontalsystems.tronkit.rpc.Trc20Provider
 import io.horizontalsystems.tronkit.transaction.Fee
 import io.horizontalsystems.tronkit.transaction.Signer
 import kotlinx.coroutines.launch
@@ -18,7 +19,8 @@ import java.math.BigInteger
 
 class MainViewModel(
     private val kit: TronKit,
-    private val signer: Signer
+    private val signer: Signer,
+    private val trc20Provider: Trc20Provider
 ) : ViewModel() {
 
     var balance: String by mutableStateOf(kit.trxBalance.toBigDecimal().movePointLeft(6).toPlainString())
@@ -126,6 +128,21 @@ class MainViewModel(
         }
     }
 
+    fun trc20TokenInfoTest() {
+        viewModelScope.launch {
+            try {
+                val decimals = trc20Provider.getDecimals(Address.fromBase58("TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"))
+                val symbol = trc20Provider.getTokenSymbol(Address.fromBase58("TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"))
+                val name = trc20Provider.getTokenName(Address.fromBase58("TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"))
+
+                Log.e("e", "decimals = $decimals, symbol = $symbol, name = $name")
+            } catch (error: Throwable) {
+                Log.e("e", "trc20TokenInfoTest error", error)
+                error.printStackTrace()
+            }
+        }
+    }
+
 }
 
 class MainViewModelFactory : ViewModelProvider.Factory {
@@ -138,7 +155,8 @@ class MainViewModelFactory : ViewModelProvider.Factory {
         val kit = TronKit.getInstance(App.instance, words, "", network, apiKey, "tron-demo-app")
         val seed = Mnemonic().toSeed(words)
         val signer = Signer.getInstance(seed, network)
+        val trc20Provider = Trc20Provider.getInstance(network, apiKey)
 
-        return MainViewModel(kit, signer) as T
+        return MainViewModel(kit, signer, trc20Provider) as T
     }
 }

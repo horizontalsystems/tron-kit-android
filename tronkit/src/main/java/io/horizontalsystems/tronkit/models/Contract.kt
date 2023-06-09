@@ -1,6 +1,5 @@
 package io.horizontalsystems.tronkit.models
 
-import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.google.protobuf.Any
@@ -176,12 +175,10 @@ sealed class Contract {
                     }
 
                     else -> {
-                        Log.e("e", "unknown contract: $contractsJson")
                         Unknown(contract?.type, contractsJson)
                     }
                 }
             } catch (error: Throwable) {
-                Log.e("e", "Contract parse error", error)
                 return null
             }
         }

@@ -1,6 +1,5 @@
 package io.horizontalsystems.tronkit.transaction
 
-import android.util.Log
 import com.google.protobuf.ByteString
 import io.horizontalsystems.tronkit.TronKit
 import io.horizontalsystems.tronkit.models.Address
@@ -10,7 +9,6 @@ import io.horizontalsystems.tronkit.models.TransferContract
 import io.horizontalsystems.tronkit.models.TriggerSmartContract
 import io.horizontalsystems.tronkit.network.TronGridService
 import io.horizontalsystems.tronkit.sync.ChainParameterManager
-import io.horizontalsystems.tronkit.toRawHexString
 import org.tron.protos.Protocol.Transaction
 import java.math.BigInteger
 
@@ -79,10 +77,8 @@ class FeeProvider(
             .clearRet()
 
         val transaction = transactionBuilder.build()
-        val bandwidth = transaction.serializedSize + MAX_RESULT_SIZE_IN_TX
-        Log.e("e", "bandwidth: $bandwidth, transaction: ${transaction.toByteArray().toRawHexString()}")
 
-        return bandwidth
+        return transaction.serializedSize + MAX_RESULT_SIZE_IN_TX
     }
 
     suspend fun estimateFee(contract: Contract): List<Fee> {

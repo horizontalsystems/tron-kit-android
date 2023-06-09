@@ -1,6 +1,5 @@
 package io.horizontalsystems.tronkit.transaction
 
-import android.util.Log
 import com.google.protobuf.ByteString
 import io.horizontalsystems.tronkit.TronKit.TransactionError
 import io.horizontalsystems.tronkit.models.Contract
@@ -9,7 +8,6 @@ import io.horizontalsystems.tronkit.models.TriggerSmartContract
 import io.horizontalsystems.tronkit.network.BroadcastTransactionResponse
 import io.horizontalsystems.tronkit.network.CreatedTransaction
 import io.horizontalsystems.tronkit.network.TronGridService
-import io.horizontalsystems.tronkit.toRawHexString
 import org.tron.protos.Protocol.Transaction
 
 class TransactionSender(
@@ -20,13 +18,6 @@ class TransactionSender(
         val createdContractProto = if (rawData.contractCount == 1) rawData.getContract(0) else null
         val originalContractProto = contract.proto
 
-        Log.e(
-            "e", "isValidCreatedTransaction: "
-                    + "\n contract type: ${createdContractProto?.type}"
-                    + "\n contract hasParameter: ${createdContractProto?.hasParameter()}"
-                    + "\n contract parameter: ${createdContractProto?.parameter?.toByteArray()?.toRawHexString()}"
-                    + "\n original contract parameter: ${originalContractProto.parameter.toByteArray().toRawHexString()}"
-        )
         return createdContractProto != null &&
                 createdContractProto.type == originalContractProto.type &&
                 createdContractProto.hasParameter() &&
@@ -58,8 +49,6 @@ class TransactionSender(
                 throw TransactionError.NotSupportedContract(contract)
             }
         }
-
-        Log.e("e", "createdTransaction: $createdTransaction")
 
         if (isValidCreatedTransaction(createdTransaction, contract)) {
             return createdTransaction

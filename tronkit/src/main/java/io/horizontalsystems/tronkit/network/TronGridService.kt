@@ -1,6 +1,5 @@
 package io.horizontalsystems.tronkit.network
 
-import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
@@ -170,7 +169,6 @@ class TronGridService(
                 amount = amount
             )
         )
-        Log.e("e", "to json: ${gson.toJson(response)}")
 
         check(response.Error == null) { "createTransaction error: ${response.Error}" }
 
@@ -205,7 +203,6 @@ class TronGridService(
         createdTransaction: CreatedTransaction,
         signature: ByteArray
     ): BroadcastTransactionResponse {
-        Log.e("e", "broadcast with signature: ${signature.toRawHexString()}")
 
         val response = service.broadcastTransaction(
             SignedTransaction(
@@ -216,8 +213,6 @@ class TronGridService(
                 signature = listOf(signature.toRawHexString())
             )
         )
-
-        Log.e("e", "to json: ${gson.toJson(response)}")
 
         check(response.result) { "broadcastTransaction error: ${response.code} - ${response.message}" }
 

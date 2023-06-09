@@ -74,8 +74,6 @@ class TransactionManager(
     fun process(initial: Boolean) {
         val transactions = storage.getUnprocessedTransactions()
 
-        Log.e("e", "process initial: $initial, transactions: ${transactions.size}")
-
         if (transactions.isEmpty()) return
 
         val fullTransactions = decorationManager.decorateTransactions(transactions)
@@ -98,8 +96,6 @@ class TransactionManager(
     }
 
     fun saveTransactionData(transactionData: List<TransactionData>, confirmed: Boolean) {
-        Log.e("e", "TransactionManager handleTransactions(): ${transactionData.size}")
-
         val transactions = mutableListOf<Transaction>()
         val internalTransactions = mutableListOf<InternalTransaction>()
 
@@ -109,7 +105,6 @@ class TransactionManager(
                     is InternalTransactionData -> {
                         val callValueDouble = (txData.data["call_value"] as? Map<String, Any>)?.get("_") as? Double
                         val value = callValueDouble?.toBigDecimal()?.toBigInteger()
-                        Log.e("e", "internal call_value: $value")
 
                         if (value != null) {
                             internalTransactions.add(
@@ -156,7 +151,7 @@ class TransactionManager(
                     }
                 }
             } catch (error: Throwable) {
-                Log.e("e", "TransactionData parsing error", error)
+                Log.w("e", "TransactionData parsing error", error)
             }
         }
 
@@ -183,9 +178,6 @@ class TransactionManager(
     }
 
     fun saveContractTransactionData(transactionData: List<ContractTransactionData>, confirmed: Boolean) {
-        Log.e("e", "TransactionManager handleContractTransactions(): ${transactionData.size}")
-
-        //TODO handle TRC721 transactions
         val trc20Events = mutableListOf<Trc20EventRecord>()
         val transactions = mutableListOf<Transaction>()
 
@@ -214,7 +206,7 @@ class TransactionManager(
                     )
                 )
             } catch (error: Throwable) {
-                Log.e("e", "Contract TransactionData parsing error: ${it.transaction_id}", error)
+                Log.w("e", "Contract TransactionData parsing error: ${it.transaction_id}", error)
             }
         }
 

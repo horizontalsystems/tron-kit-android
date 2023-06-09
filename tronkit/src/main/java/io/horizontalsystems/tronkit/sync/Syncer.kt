@@ -1,13 +1,12 @@
 package io.horizontalsystems.tronkit.sync
 
-import android.util.Log
 import io.horizontalsystems.tronkit.TronKit.SyncError
 import io.horizontalsystems.tronkit.TronKit.SyncState
 import io.horizontalsystems.tronkit.account.AccountInfoManager
 import io.horizontalsystems.tronkit.database.Storage
 import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.network.TronGridService
-import io.horizontalsystems.tronkit.network.TronGridService.*
+import io.horizontalsystems.tronkit.network.TronGridService.TronGridServiceError
 import io.horizontalsystems.tronkit.transaction.TransactionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -110,8 +109,6 @@ class Syncer(
     }
 
     private suspend fun onUpdateLastBlockHeight(lastBlockHeight: Long) {
-        Log.e("e", "onUpdateLastBlockHeight: $lastBlockHeight")
-
         try {
             val transactionSyncTimestamp = storage.getTransactionSyncBlockTimestamp() ?: 0
             val contractTransactionSyncTimestamp = storage.getContractTransactionSyncBlockTimestamp() ?: 0
@@ -141,8 +138,6 @@ class Syncer(
     }
 
     private suspend fun syncTransactions(syncBlockTimestamp: Long) {
-        Log.e("e", "syncTransactions() syncBlockTimestamp: $syncBlockTimestamp")
-
         var fingerprint: String? = null
         do {
             val response = tronGridService.getTransactions(
@@ -165,8 +160,6 @@ class Syncer(
     }
 
     private suspend fun syncContractTransactions(syncBlockTimestamp: Long) {
-        Log.e("e", "syncContractTransactions() syncBlockTimestamp: $syncBlockTimestamp")
-
         var fingerprint: String? = null
         do {
             val response = tronGridService.getContractTransactions(
