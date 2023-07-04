@@ -10,14 +10,18 @@ import io.horizontalsystems.tronkit.models.ChainParameter
 import io.horizontalsystems.tronkit.models.Trc20Balance
 import io.horizontalsystems.tronkit.rpc.*
 import io.horizontalsystems.tronkit.toRawHexString
+import io.reactivex.Single
+import kotlinx.coroutines.rx2.await
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
+import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.converter.scalars.ScalarsConverterFactory
 import retrofit2.http.*
 import java.math.BigInteger
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.logging.Logger
 
@@ -52,6 +56,8 @@ class TronGridService(
         val httpClient = OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
             .addInterceptor(headersInterceptor)
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
 
         gsonRpc = gson(isHex = true)
         rpcService = retrofit(httpClient, baseUrl, gsonRpc).create(TronGridRpcAPI::class.java)
@@ -64,7 +70,7 @@ class TronGridService(
         val rpc = BlockNumberJsonRpc()
         rpc.id = currentRpcId.incrementAndGet()
 
-        val rpcResponse = rpcService.rpc(gsonRpc.toJson(rpc))
+        val rpcResponse = rpcService.rpc(gsonRpc.toJson(rpc)).await()
         return rpc.parseResponse(rpcResponse, gsonRpc)
     }
 
@@ -85,7 +91,7 @@ class TronGridService(
 
         rpc.id = currentRpcId.incrementAndGet()
 
-        val rpcResponse = rpcService.rpc(gsonRpc.toJson(rpc))
+        val rpcResponse = rpcService.rpc(gsonRpc.toJson(rpc)).await()
         return rpc.parseResponse(rpcResponse, gsonRpc)
     }
 
@@ -101,13 +107,13 @@ class TronGridService(
         )
         rpc.id = currentRpcId.incrementAndGet()
 
-        val rpcResponse = rpcService.rpc(gsonRpc.toJson(rpc))
+        val rpcResponse = rpcService.rpc(gsonRpc.toJson(rpc)).await()
 
         return rpc.parseResponse(rpcResponse, gsonRpc)
     }
 
     suspend fun getAccountInfo(address: String): AccountInfo {
-        val response = service.accountInfo(address)
+        val response = service.accountInfo(address).await()
         val data = response.data.firstOrNull() ?: throw TronGridServiceError.NoAccountInfoData
 
         val trc20Balances = data.trc20.map { balanceMap ->
@@ -127,7 +133,7 @@ class TronGridService(
         limit: Int,
         orderBy: String
     ): Pair<List<TransactionData>, String?> {
-        val response = service.transactions(address, startBlockTimestamp, fingerprint, onlyConfirmed, limit, orderBy)
+        val response = service.transactions(address, startBlockTimestamp, fingerprint, onlyConfirmed, limit, orderBy).await()
 
         check(response.success) { "transactions" }
 
@@ -150,7 +156,7 @@ class TronGridService(
         limit: Int,
         orderBy: String
     ): Pair<List<ContractTransactionData>, String?> {
-        val response = service.contractTransactions(address, startBlockTimestamp, fingerprint, onlyConfirmed, limit, orderBy)
+        val response = service.contractTransactions(address, startBlockTimestamp, fingerprint, onlyConfirmed, limit, orderBy).await()
 
         check(response.success) { "contractTransactions error" }
 
@@ -168,7 +174,7 @@ class TronGridService(
                 to_address = toAddress.hex,
                 amount = amount
             )
-        )
+        ).await()
 
         check(response.Error == null) { "createTransaction error: ${response.Error}" }
 
@@ -192,7 +198,7 @@ class TronGridService(
                 fee_limit = feeLimit,
                 call_value = callValue
             )
-        )
+        ).await()
 
         check(response.result.result) { "triggerSmartContract error: ${response.result.code} - ${response.result.message}" }
 
@@ -212,7 +218,7 @@ class TronGridService(
                 raw_data_hex = createdTransaction.raw_data_hex,
                 signature = listOf(signature.toRawHexString())
             )
-        )
+        ).await()
 
         check(response.result) { "broadcastTransaction error: ${response.code} - ${response.message}" }
 
@@ -220,7 +226,7 @@ class TronGridService(
     }
 
     suspend fun getChainParameters(): List<ChainParameter> {
-        val response = service.getChainParameters()
+        val response = service.getChainParameters().await()
 
         return response.chainParameter
     }
@@ -236,6 +242,7 @@ class TronGridService(
 
     private fun retrofit(httpClient: OkHttpClient.Builder, baseUrl: String, gson: Gson): Retrofit = Retrofit.Builder()
         .baseUrl(baseUrl)
+        .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
         .addConverterFactory(ScalarsConverterFactory.create())
         .addConverterFactory(GsonConverterFactory.create(gson))
         .client(httpClient.build())
@@ -244,62 +251,62 @@ class TronGridService(
     private interface TronGridRpcAPI {
         @POST("jsonrpc")
         @Headers("Content-Type: application/json", "Accept: application/json")
-        suspend fun rpc(@Body jsonRpc: String): RpcResponse
+        fun rpc(@Body jsonRpc: String): Single<RpcResponse>
     }
 
     private interface TronGridExtensionAPI {
 
         @GET("v1/accounts/{address}")
-        suspend fun accountInfo(
+        fun accountInfo(
             @Path("address") address: String
-        ): AccountInfoResponse
+        ): Single<AccountInfoResponse>
 
         @GET("v1/accounts/{address}/transactions")
-        suspend fun transactions(
+        fun transactions(
             @Path("address") address: String,
             @Query("min_timestamp") startBlockTimestamp: Long,
             @Query("fingerprint") fingerprint: String?,
             @Query("only_confirmed") onlyConfirmed: Boolean,
             @Query("limit") limit: Int,
             @Query("order_by") orderBy: String
-        ): TransactionsResponse
+        ): Single<TransactionsResponse>
 
         @GET("v1/accounts/{address}/transactions/trc20")
-        suspend fun contractTransactions(
+        fun contractTransactions(
             @Path("address") address: String,
             @Query("min_timestamp") startBlockTimestamp: Long,
             @Query("fingerprint") fingerprint: String?,
             @Query("only_confirmed") onlyConfirmed: Boolean,
             @Query("limit") limit: Int,
             @Query("order_by") orderBy: String
-        ): ContractTransactionsResponse
+        ): Single<ContractTransactionsResponse>
 
         @POST("wallet/createtransaction")
         @Headers("Content-Type: application/json", "Accept: application/json")
-        suspend fun createTransaction(
+        fun createTransaction(
             @Body request: CreateTransactionRequest
-        ): CreatedTransaction
+        ): Single<CreatedTransaction>
 
         @POST("wallet/triggersmartcontract")
         @Headers("Content-Type: application/json", "Accept: application/json")
-        suspend fun triggerSmartContract(
+        fun triggerSmartContract(
             @Body request: TriggerSmartContractRequest
-        ): TriggerSmartContractResponse
+        ): Single<TriggerSmartContractResponse>
 
         @POST("wallet/estimateenergy")
         @Headers("Content-Type: application/json", "Accept: application/json")
-        suspend fun estimateEnergy(
+        fun estimateEnergy(
             @Body request: EstimateEnergyRequest
-        ): EstimateEnergyResponse
+        ): Single<EstimateEnergyResponse>
 
         @POST("wallet/broadcasttransaction")
         @Headers("Content-Type: application/json", "Accept: application/json")
-        suspend fun broadcastTransaction(
+        fun broadcastTransaction(
             @Body signedTransaction: SignedTransaction
-        ): BroadcastTransactionResponse
+        ): Single<BroadcastTransactionResponse>
 
         @GET("wallet/getchainparameters")
-        suspend fun getChainParameters(): ChainParametersResponse
+        fun getChainParameters(): Single<ChainParametersResponse>
     }
 
     sealed class TronGridServiceError : Throwable() {

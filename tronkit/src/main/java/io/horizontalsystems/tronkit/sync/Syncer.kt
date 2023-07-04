@@ -97,35 +97,34 @@ class Syncer(
     }
 
     private suspend fun syncLastBlockHeight() {
-        val lastBlockHeight = tronGridService.getBlockHeight()
-
-        if (this.lastBlockHeight == lastBlockHeight) return
-
-        storage.saveLastBlockHeight(lastBlockHeight)
-
-        this.lastBlockHeight = lastBlockHeight
-
-        onUpdateLastBlockHeight(lastBlockHeight)
-    }
-
-    private suspend fun onUpdateLastBlockHeight(lastBlockHeight: Long) {
         try {
-            val transactionSyncTimestamp = storage.getTransactionSyncBlockTimestamp() ?: 0
-            val contractTransactionSyncTimestamp = storage.getContractTransactionSyncBlockTimestamp() ?: 0
-            val initial = transactionSyncTimestamp == 0L || contractTransactionSyncTimestamp == 0L
+            val lastBlockHeight = tronGridService.getBlockHeight()
 
-            syncAccountInfo()
-            syncTransactions(transactionSyncTimestamp)
-            syncContractTransactions(contractTransactionSyncTimestamp)
+            if (this.lastBlockHeight == lastBlockHeight) return
 
-            transactionManager.process(initial)
+            storage.saveLastBlockHeight(lastBlockHeight)
 
-            syncState = SyncState.Synced()
+            this.lastBlockHeight = lastBlockHeight
 
+            onUpdateLastBlockHeight(lastBlockHeight)
         } catch (error: Throwable) {
             error.printStackTrace()
             syncState = SyncState.NotSynced(error)
         }
+    }
+
+    private suspend fun onUpdateLastBlockHeight(lastBlockHeight: Long) {
+        val transactionSyncTimestamp = storage.getTransactionSyncBlockTimestamp() ?: 0
+        val contractTransactionSyncTimestamp = storage.getContractTransactionSyncBlockTimestamp() ?: 0
+        val initial = transactionSyncTimestamp == 0L || contractTransactionSyncTimestamp == 0L
+
+        syncAccountInfo()
+        syncTransactions(transactionSyncTimestamp)
+        syncContractTransactions(contractTransactionSyncTimestamp)
+
+        transactionManager.process(initial)
+
+        syncState = SyncState.Synced()
     }
 
     private suspend fun syncAccountInfo() {
