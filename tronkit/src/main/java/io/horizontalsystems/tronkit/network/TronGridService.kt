@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
+import io.horizontalsystems.tronkit.hexStringToByteArray
 import io.horizontalsystems.tronkit.models.AccountInfo
 import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.models.ChainParameter
@@ -176,7 +177,7 @@ class TronGridService(
             )
         ).await()
 
-        check(response.Error == null) { "createTransaction error: ${response.Error}" }
+        check(response.Error == null) { "createTransaction error: ${response.Error?.let { hexStringToUtf8String(it) }}" }
 
         return response
     }
@@ -200,7 +201,7 @@ class TronGridService(
             )
         ).await()
 
-        check(response.result.result) { "triggerSmartContract error: ${response.result.code} - ${response.result.message}" }
+        check(response.result.result) { "triggerSmartContract error: ${response.result.code} - ${hexStringToUtf8String(response.result.message)}" }
 
         return response.transaction
     }
@@ -220,7 +221,7 @@ class TronGridService(
             )
         ).await()
 
-        check(response.result) { "broadcastTransaction error: ${response.code} - ${response.message}" }
+        check(response.result) { "broadcastTransaction error: ${response.code} - ${hexStringToUtf8String(response.message)}" }
 
         return response
     }
@@ -229,6 +230,12 @@ class TronGridService(
         val response = service.getChainParameters().await()
 
         return response.chainParameter
+    }
+
+    private fun hexStringToUtf8String(hexString: String) = try {
+        String(hexString.hexStringToByteArray())
+    } catch (_: Throwable) {
+        hexString
     }
 
     private fun gson(isHex: Boolean): Gson = GsonBuilder()
