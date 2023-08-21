@@ -15,6 +15,8 @@ class NativeTransactionDecoration(
 
         when (contract) {
             is TransferContract -> {
+                tags.add(TransactionTag.TRX_COIN)
+
                 if (contract.ownerAddress == userAddress) {
                     tags.add(TransactionTag.TRX_COIN_OUTGOING)
                     tags.add(TransactionTag.OUTGOING)
@@ -26,6 +28,8 @@ class NativeTransactionDecoration(
             }
 
             is TransferAssetContract -> {
+                tags.add(TransactionTag.TRC10)
+
                 if (contract.ownerAddress == userAddress) {
                     tags.add(TransactionTag.trc10Outgoing(contract.assetName))
                     tags.add(TransactionTag.OUTGOING)

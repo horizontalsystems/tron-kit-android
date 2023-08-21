@@ -15,6 +15,6 @@ class OutgoingTrc20Decoration(
 ) : TransactionDecoration() {
 
     override fun tags(userAddress: Address): List<String> =
-        listOf(contractAddress.hex, TransactionTag.TRC20_TRANSFER, TransactionTag.trc20Outgoing(contractAddress.hex), TransactionTag.OUTGOING)
+        listOf(contractAddress.base58, TransactionTag.TRC20_TRANSFER, TransactionTag.trc20Outgoing(contractAddress.base58), TransactionTag.OUTGOING)
 
 }

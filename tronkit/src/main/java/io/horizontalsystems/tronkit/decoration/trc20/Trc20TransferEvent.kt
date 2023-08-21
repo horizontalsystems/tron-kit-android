@@ -17,15 +17,15 @@ class Trc20TransferEvent(
     val tokenInfo: TokenInfo = TokenInfo(record.tokenName, record.tokenSymbol, record.tokenDecimal)
 
     override fun tags(userAddress: Address): List<String> {
-        val tags = mutableListOf(contractAddress.hex, TransactionTag.TRC20_TRANSFER)
+        val tags = mutableListOf(contractAddress.base58, TransactionTag.TRC20_TRANSFER)
 
         if (from == userAddress) {
-            tags.add(TransactionTag.trc20Outgoing(contractAddress.hex))
+            tags.add(TransactionTag.trc20Outgoing(contractAddress.base58))
             tags.add(TransactionTag.OUTGOING)
         }
 
         if (to == userAddress) {
-            tags.add(TransactionTag.trc20Incoming(contractAddress.hex))
+            tags.add(TransactionTag.trc20Incoming(contractAddress.base58))
             tags.add(TransactionTag.INCOMING)
         }
 

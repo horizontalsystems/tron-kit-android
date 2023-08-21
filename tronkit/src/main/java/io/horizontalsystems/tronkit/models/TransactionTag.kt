@@ -9,6 +9,7 @@ class TransactionTag(
 ) {
     companion object {
         const val TRX_COIN = "TRX"
+        const val TRC10 = "trc10"
         const val INCOMING = "incoming"
         const val OUTGOING = "outgoing"
         const val SWAP = "swap"
@@ -20,8 +21,8 @@ class TransactionTag(
         fun trc20Incoming(contractAddress: String): String = "trc20_${contractAddress}_$INCOMING"
         fun trc20Outgoing(contractAddress: String): String = "trc20_${contractAddress}_$OUTGOING"
 
-        fun trc10Incoming(assetId: String): String = "trc10_${assetId}_$INCOMING"
-        fun trc10Outgoing(assetId: String): String = "trc10_${assetId}_$OUTGOING"
+        fun trc10Incoming(assetId: String): String = "${TRC10}_${assetId}_$INCOMING"
+        fun trc10Outgoing(assetId: String): String = "${TRC10}_${assetId}_$OUTGOING"
     }
 
 }
