@@ -152,8 +152,8 @@ class MainViewModelFactory : ViewModelProvider.Factory {
         val network = Network.NileTestnet
         val apiKey = ""
         val words = " ".split(" ")
-        val kit = TronKit.getInstance(App.instance, words, "", network, apiKey, "tron-demo-app")
         val seed = Mnemonic().toSeed(words)
+        val kit = TronKit.getInstance(App.instance, seed, network, apiKey, "tron-demo-app")
         val signer = Signer.getInstance(seed, network)
         val trc20Provider = Trc20Provider.getInstance(network, apiKey)
 

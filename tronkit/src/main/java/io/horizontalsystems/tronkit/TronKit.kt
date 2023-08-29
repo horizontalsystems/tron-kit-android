@@ -241,13 +241,11 @@ class TronKit(
 
         fun getInstance(
             application: Application,
-            words: List<String>,
-            passphrase: String = "",
+            seed: ByteArray,
             network: Network,
             tronGridApiKey: String,
             walletId: String
         ): TronKit {
-            val seed = Mnemonic().toSeed(words, passphrase)
             val privateKey = Signer.privateKey(seed, network)
             val address = Signer.address(privateKey, network)
 
