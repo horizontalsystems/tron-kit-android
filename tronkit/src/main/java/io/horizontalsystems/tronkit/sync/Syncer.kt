@@ -155,7 +155,7 @@ class Syncer(
 
                 storage.saveTransactionSyncTimestamp(transactionData.last().block_timestamp)
             }
-        } while (fingerprint != null)
+        } while (fingerprint != null || transactionData.size >= limit)
     }
 
     private suspend fun syncContractTransactions(syncBlockTimestamp: Long) {
