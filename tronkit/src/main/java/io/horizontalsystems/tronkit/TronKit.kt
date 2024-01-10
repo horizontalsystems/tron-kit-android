@@ -17,6 +17,7 @@ import io.horizontalsystems.tronkit.models.Contract
 import io.horizontalsystems.tronkit.models.FullTransaction
 import io.horizontalsystems.tronkit.models.TransferContract
 import io.horizontalsystems.tronkit.models.TriggerSmartContract
+import io.horizontalsystems.tronkit.network.ApiKeyProvider
 import io.horizontalsystems.tronkit.network.ConnectionManager
 import io.horizontalsystems.tronkit.network.Network
 import io.horizontalsystems.tronkit.network.TronGridService
@@ -243,24 +244,25 @@ class TronKit(
             application: Application,
             seed: ByteArray,
             network: Network,
-            tronGridApiKey: String,
+            tronGridApiKeys: List<String>,
             walletId: String
         ): TronKit {
             val privateKey = Signer.privateKey(seed, network)
             val address = Signer.address(privateKey, network)
 
-            return getInstance(application, address, network, tronGridApiKey, walletId)
+            return getInstance(application, address, network, tronGridApiKeys, walletId)
         }
 
         fun getInstance(
             application: Application,
             address: Address,
             network: Network,
-            tronGridApiKey: String,
+            tronGridApiKeys: List<String>,
             walletId: String
         ): TronKit {
             val syncTimer = SyncTimer(30, ConnectionManager(application))
-            val tronGridService = TronGridService(network, tronGridApiKey)
+            val apiKeyProvider = ApiKeyProvider(tronGridApiKeys)
+            val tronGridService = TronGridService(network, apiKeyProvider)
             val mainDatabase = TronDatabaseManager.getMainDatabase(application, network, walletId)
             val storage = Storage(mainDatabase)
             val accountInfoManager = AccountInfoManager(storage)

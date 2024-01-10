@@ -6,6 +6,7 @@ import io.horizontalsystems.tronkit.contracts.trc20.NameMethod
 import io.horizontalsystems.tronkit.contracts.trc20.SymbolMethod
 import io.horizontalsystems.tronkit.decoration.TokenInfo
 import io.horizontalsystems.tronkit.models.Address
+import io.horizontalsystems.tronkit.network.ApiKeyProvider
 import io.horizontalsystems.tronkit.network.Network
 import io.horizontalsystems.tronkit.network.TronGridService
 import io.horizontalsystems.tronkit.toBigInteger
@@ -65,8 +66,9 @@ class Trc20Provider(
     }
 
     companion object {
-        fun getInstance(network: Network, tronGridApiKey: String): Trc20Provider {
-            val tronGridService = TronGridService(network, tronGridApiKey)
+        fun getInstance(network: Network, tronGridApiKeys: List<String>): Trc20Provider {
+            val apiKeyProvider = ApiKeyProvider(tronGridApiKeys)
+            val tronGridService = TronGridService(network, apiKeyProvider)
             return Trc20Provider(tronGridService)
         }
     }
