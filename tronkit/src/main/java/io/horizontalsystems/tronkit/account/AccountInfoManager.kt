@@ -11,8 +11,6 @@ import java.math.BigInteger
 class AccountInfoManager(
     private val storage: Storage
 ) {
-    var isAccountActive: Boolean = true
-        private set
 
     var trxBalance: BigInteger = storage.getTrxBalance() ?: BigInteger.ZERO
         private set(value) {
@@ -62,7 +60,4 @@ class AccountInfoManager(
         trxBalance = accountInfo.balance
     }
 
-    fun handleInactiveAccount() {
-        isAccountActive = false
-    }
 }

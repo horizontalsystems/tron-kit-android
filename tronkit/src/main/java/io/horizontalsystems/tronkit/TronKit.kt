@@ -74,9 +74,6 @@ class TronKit(
     val transactionsFlow: StateFlow<Pair<List<FullTransaction>, Boolean>>
         get() = transactionManager.transactionsFlow
 
-    val isAccountActive: Boolean
-        get() = accountInfoManager.isAccountActive
-
     fun start() {
         if (started) return
         started = true

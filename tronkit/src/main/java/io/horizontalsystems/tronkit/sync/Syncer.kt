@@ -132,7 +132,7 @@ class Syncer(
             val accountInfo = tronGridService.getAccountInfo(address.base58)
             accountInfoManager.handle(accountInfo)
         } catch (error: TronGridServiceError.NoAccountInfoData) {
-            accountInfoManager.handleInactiveAccount()
+            // no account info
         }
     }
 
