@@ -36,31 +36,41 @@ class UnknownTransactionDecoration(
         (tagsFromInternalTransactions(userAddress) + tagsFromEvents(userAddress)).toSet().toList()
 
     private fun tagsFromInternalTransactions(userAddress: Address): List<String> {
-        var outgoingValue = if (fromAddress == userAddress) value ?: BigInteger.ZERO else BigInteger.ZERO
-        for (internalTx in internalTransactions.filter { it.from == userAddress }) {
-            outgoingValue += internalTx.value
+        val incomingTxs = internalTransactions.filter { it.to == userAddress }
+        val outgoingTxs = internalTransactions.filter { it.from == userAddress }
+
+        var incomingValue = incomingTxs.sumOf { it.value }
+        var outgoingValue = outgoingTxs.sumOf { it.value }
+
+        value?.let {
+            when (userAddress) {
+                toAddress -> incomingValue += value
+                fromAddress -> outgoingValue += value
+            }
         }
 
-        var incomingValue = if (toAddress == userAddress) value ?: BigInteger.ZERO else BigInteger.ZERO
-        for (internalTx in internalTransactions.filter { it.to == userAddress }) {
-            incomingValue += internalTx.value
+        return buildList {
+            when {
+                incomingValue > outgoingValue -> {
+                    add(TransactionTag.TRX_COIN_INCOMING)
+                    add(TransactionTag.INCOMING)
+                }
+                incomingValue < outgoingValue -> {
+                    add(TransactionTag.TRX_COIN_OUTGOING)
+                    add(TransactionTag.OUTGOING)
+                }
+            }
+
+            internalTransactions.forEach { internalTransaction ->
+                if (internalTransaction.from != userAddress) {
+                    add(TransactionTag.fromAddress(internalTransaction.from.hex))
+                }
+
+                if (internalTransaction.to != userAddress) {
+                    add(TransactionTag.toAddress(internalTransaction.to.hex))
+                }
+            }
         }
-
-        if (incomingValue == BigInteger.ZERO && outgoingValue == BigInteger.ZERO) return listOf()
-
-        val tags = mutableListOf(TransactionTag.TRX_COIN)
-
-        if (incomingValue > outgoingValue) {
-            tags.add(TransactionTag.TRX_COIN_INCOMING)
-            tags.add(TransactionTag.INCOMING)
-        }
-
-        if (outgoingValue > incomingValue) {
-            tags.add(TransactionTag.TRX_COIN_OUTGOING)
-            tags.add(TransactionTag.OUTGOING)
-        }
-
-        return tags
     }
 
     private fun tagsFromEvents(userAddress: Address): List<String> {

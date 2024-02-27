@@ -1,8 +1,8 @@
 package io.horizontalsystems.tronkit.decoration.trc20
 
-import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.decoration.Event
 import io.horizontalsystems.tronkit.decoration.TokenInfo
+import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.models.TransactionTag
 import io.horizontalsystems.tronkit.models.Trc20EventRecord
 import java.math.BigInteger
@@ -22,11 +22,13 @@ class Trc20TransferEvent(
         if (from == userAddress) {
             tags.add(TransactionTag.trc20Outgoing(contractAddress.base58))
             tags.add(TransactionTag.OUTGOING)
+            tags.add(TransactionTag.toAddress(to.hex))
         }
 
         if (to == userAddress) {
             tags.add(TransactionTag.trc20Incoming(contractAddress.base58))
             tags.add(TransactionTag.INCOMING)
+            tags.add(TransactionTag.fromAddress(from.hex))
         }
 
         return tags

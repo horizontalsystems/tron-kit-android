@@ -20,10 +20,12 @@ class NativeTransactionDecoration(
                 if (contract.ownerAddress == userAddress) {
                     tags.add(TransactionTag.TRX_COIN_OUTGOING)
                     tags.add(TransactionTag.OUTGOING)
+                    tags.add(TransactionTag.toAddress(contract.toAddress.hex))
                 }
                 if (contract.toAddress == userAddress) {
                     tags.add(TransactionTag.TRX_COIN_INCOMING)
                     tags.add(TransactionTag.INCOMING)
+                    tags.add(TransactionTag.fromAddress(contract.ownerAddress.hex))
                 }
             }
 
@@ -33,10 +35,12 @@ class NativeTransactionDecoration(
                 if (contract.ownerAddress == userAddress) {
                     tags.add(TransactionTag.trc10Outgoing(contract.assetName))
                     tags.add(TransactionTag.OUTGOING)
+                    tags.add(TransactionTag.toAddress(contract.toAddress.hex))
                 }
                 if (contract.toAddress == userAddress) {
                     tags.add(TransactionTag.trc10Incoming(contract.assetName))
                     tags.add(TransactionTag.INCOMING)
+                    tags.add(TransactionTag.fromAddress(contract.ownerAddress.hex))
                 }
             }
 

@@ -23,6 +23,9 @@ class TransactionTag(
 
         fun trc10Incoming(assetId: String): String = "${TRC10}_${assetId}_$INCOMING"
         fun trc10Outgoing(assetId: String): String = "${TRC10}_${assetId}_$OUTGOING"
+
+        fun fromAddress(address: String): String = "from_$address"
+        fun toAddress(address: String): String = "to_$address"
     }
 
 }
