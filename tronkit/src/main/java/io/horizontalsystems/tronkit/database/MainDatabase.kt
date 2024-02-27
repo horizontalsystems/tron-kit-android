@@ -25,7 +25,7 @@ import io.horizontalsystems.tronkit.models.Trc20EventRecord
         TransactionTag::class,
         ChainParameter::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(RoomTypeConverters::class)
