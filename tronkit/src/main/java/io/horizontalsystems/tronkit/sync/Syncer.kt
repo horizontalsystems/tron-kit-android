@@ -29,6 +29,7 @@ class Syncer(
         private const val orderBy = "block_timestamp,asc"
     }
 
+    private var syncing = false
     private var scope: CoroutineScope? = null
 
     var syncState: SyncState = SyncState.NotSynced(SyncError.NotStarted())
@@ -91,8 +92,14 @@ class Syncer(
     }
 
     override fun sync() {
+        if (syncing) {
+            return
+        }
+
         scope?.launch {
+            syncing = true
             syncLastBlockHeight()
+            syncing = false
         }
     }
 
