@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace 'io.horizontalsystems.tronkit'
+    namespace 'io.horizontalsystems.tronkit.sample'
     compileSdk 33
 
     defaultConfig {

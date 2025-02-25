@@ -1,4 +1,4 @@
-package io.horizontalsystems.tronkit
+package io.horizontalsystems.tronkit.sample
 
 import android.util.Log
 import androidx.compose.runtime.getValue
@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.horizontalsystems.hdwalletkit.Mnemonic
+import io.horizontalsystems.tronkit.TronKit
 import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.models.FullTransaction
 import io.horizontalsystems.tronkit.network.Network

@@ -1,4 +1,4 @@
-package io.horizontalsystems.tronkit.ui.theme
+package io.horizontalsystems.tronkit.sample.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.MaterialTheme

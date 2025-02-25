@@ -1,6 +1,7 @@
-package io.horizontalsystems.tronkit
+package io.horizontalsystems.tronkit.sample
 
 import android.app.Application
+import io.horizontalsystems.tronkit.TronKit
 import java.util.logging.Logger
 
 class App : Application() {
