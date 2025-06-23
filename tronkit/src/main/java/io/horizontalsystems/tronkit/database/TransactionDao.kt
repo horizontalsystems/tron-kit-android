@@ -27,7 +27,7 @@ interface TransactionDao {
     fun getTransactions(hashes: List<ByteArray>): List<Transaction>
 
     @RawQuery
-    suspend fun getTransactionsBefore(query: SupportSQLiteQuery): List<Transaction>
+    suspend fun getTransactionsByRawQuery(query: SupportSQLiteQuery): List<Transaction>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertTransactions(transactions: List<Transaction>)

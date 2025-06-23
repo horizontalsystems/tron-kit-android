@@ -124,7 +124,7 @@ class Storage(
                       $limitClause
                       """
 
-        return database.transactionDao().getTransactionsBefore(SimpleSQLiteQuery(sqlQuery))
+        return database.transactionDao().getTransactionsByRawQuery(SimpleSQLiteQuery(sqlQuery))
     }
 
     fun getInternalTransactions(): List<InternalTransaction> {
