@@ -61,7 +61,7 @@ class MainViewModel(
 
         viewModelScope.launch {
             kit.transactionsFlow.collect {
-                val allTransactions = kit.getFullTransactions(emptyList(), null, null)
+                val allTransactions = kit.getFullTransactionsBefore(emptyList(), null, null)
                 Log.e("e", "onTxUpdate, allTransactions: ${allTransactions.size}")
                 transactions = allTransactions
             }

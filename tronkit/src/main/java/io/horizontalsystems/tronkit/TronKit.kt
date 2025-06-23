@@ -3,7 +3,6 @@ package io.horizontalsystems.tronkit
 import android.app.Application
 import android.content.Context
 import com.google.gson.Gson
-import io.horizontalsystems.hdwalletkit.Mnemonic
 import io.horizontalsystems.tronkit.account.AccountInfoManager
 import io.horizontalsystems.tronkit.contracts.ContractMethodHelper
 import io.horizontalsystems.tronkit.contracts.trc20.TransferMethod
@@ -111,12 +110,16 @@ class TronKit(
         return transactionManager.getFullTransactionsFlow(tags)
     }
 
-    suspend fun getFullTransactions(tags: List<List<String>>, fromHash: ByteArray? = null, limit: Int? = null): List<FullTransaction> {
-        return transactionManager.getFullTransactions(tags, fromHash, limit)
+    suspend fun getFullTransactionsBefore(tags: List<List<String>>, fromHash: ByteArray? = null, limit: Int? = null): List<FullTransaction> {
+        return transactionManager.getFullTransactionsBefore(tags, fromHash, limit)
     }
 
     suspend fun getFullTransactions(hashes: List<ByteArray>): List<FullTransaction> {
         return transactionManager.getFullTransactions(hashes)
+    }
+
+    suspend fun getFullTransactionsAfter(tags: List<List<String>>, fromHash: ByteArray? = null, limit: Int? = null): List<FullTransaction> {
+        return transactionManager.getFullTransactionsAfter(tags, fromHash, limit)
     }
 
     suspend fun estimateFee(contract: Contract): List<Fee> {

@@ -10,6 +10,7 @@ import io.horizontalsystems.tronkit.models.TransactionSyncState
 import io.horizontalsystems.tronkit.models.TransactionTag
 import io.horizontalsystems.tronkit.models.Trc20Balance
 import io.horizontalsystems.tronkit.models.Trc20EventRecord
+import io.horizontalsystems.tronkit.toRawHexString
 import java.math.BigInteger
 
 class Storage(
@@ -78,6 +79,14 @@ class Storage(
     }
 
     suspend fun getTransactionsBefore(tags: List<List<String>>, hash: ByteArray?, limit: Int?): List<Transaction> {
+        return getTransactionsBefore(tags, hash, true, limit)
+    }
+
+    suspend fun getTransactionsAfter(tags: List<List<String>>, hash: ByteArray?, limit: Int?): List<Transaction> {
+        return getTransactionsBefore(tags, hash, false, limit)
+    }
+
+   private suspend fun getTransactionsBefore(tags: List<List<String>>, hash: ByteArray?, descending: Boolean, limit: Int?): List<Transaction> {
         val whereConditions = mutableListOf<String>()
 
         if (tags.isNotEmpty()) {
@@ -92,12 +101,13 @@ class Storage(
         }
 
         hash?.let { database.transactionDao().getTransaction(hash) }?.let { fromTransaction ->
+            val comparisonOperator = if (descending) "<" else ">"
             val fromCondition = """
                            (
-                                tx.timestamp < ${fromTransaction.timestamp} OR 
+                                tx.timestamp $comparisonOperator ${fromTransaction.timestamp} OR 
                                 (
                                     tx.timestamp = ${fromTransaction.timestamp} AND 
-                                    LOWER(HEX(tx.hash)) < "${fromTransaction.hashString.lowercase()}"
+                                    LOWER(HEX(tx.hash)) $comparisonOperator "${fromTransaction.hashString.lowercase()}"
                                 )
                            )
                            """
@@ -112,7 +122,8 @@ class Storage(
             .joinToString("\n")
 
         val whereClause = if (whereConditions.isNotEmpty()) "WHERE ${whereConditions.joinToString(" AND ")}" else ""
-        val orderClause = "ORDER BY tx.timestamp DESC, HEX(tx.hash) DESC"
+        val orderByType = if (descending) "DESC" else "ASC"
+        val orderClause = "ORDER BY tx.timestamp $orderByType, HEX(tx.hash) $orderByType"
         val limitClause = limit?.let { "LIMIT $limit" } ?: ""
 
         val sqlQuery = """
