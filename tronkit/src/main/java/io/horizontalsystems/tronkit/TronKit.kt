@@ -18,6 +18,7 @@ import io.horizontalsystems.tronkit.models.TransferContract
 import io.horizontalsystems.tronkit.models.TriggerSmartContract
 import io.horizontalsystems.tronkit.network.ApiKeyProvider
 import io.horizontalsystems.tronkit.network.ConnectionManager
+import io.horizontalsystems.tronkit.network.CreatedTransaction
 import io.horizontalsystems.tronkit.network.Network
 import io.horizontalsystems.tronkit.network.TronGridService
 import io.horizontalsystems.tronkit.sync.ChainParameterManager
@@ -161,6 +162,10 @@ class TronKit(
 
     suspend fun send(contract: Contract, signer: Signer, feeLimit: Long? = null): String {
         val createdTransaction = transactionSender.createTransaction(contract, feeLimit)
+        return send(createdTransaction, signer)
+    }
+
+    suspend fun send(createdTransaction: CreatedTransaction, signer: Signer): String {
         val response = transactionSender.broadcastTransaction(createdTransaction, signer)
 
         check(response.result) {
