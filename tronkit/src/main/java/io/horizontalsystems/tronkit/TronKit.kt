@@ -252,10 +252,13 @@ class TronKit(
             tronGridApiKeys: List<String>,
             walletId: String
         ): TronKit {
-            val privateKey = Signer.privateKey(seed, network)
-            val address = Signer.address(privateKey, network)
-
+            val address = getAddress(seed, network)
             return getInstance(application, address, network, tronGridApiKeys, walletId)
+        }
+
+        fun getAddress(seed: ByteArray, network: Network): Address {
+            val privateKey = Signer.privateKey(seed, network)
+            return Signer.address(privateKey, network)
         }
 
         fun getInstance(
