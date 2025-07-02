@@ -15,6 +15,7 @@ import io.horizontalsystems.tronkit.network.Network
 import io.horizontalsystems.tronkit.rpc.Trc20Provider
 import io.horizontalsystems.tronkit.transaction.Fee
 import io.horizontalsystems.tronkit.transaction.Signer
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.math.BigInteger
 
@@ -130,15 +131,33 @@ class MainViewModel(
     }
 
     fun trc20TokenInfoTest() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.Default) {
             try {
-                val decimals = trc20Provider.getDecimals(Address.fromBase58("TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"))
-                val symbol = trc20Provider.getTokenSymbol(Address.fromBase58("TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"))
-                val name = trc20Provider.getTokenName(Address.fromBase58("TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"))
+                val usdt = Address.fromBase58("TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t")
+                val decimals = trc20Provider.getDecimals(usdt)
+                val symbol = trc20Provider.getTokenSymbol(usdt)
+                val name = trc20Provider.getTokenName(usdt)
 
                 Log.e("e", "decimals = $decimals, symbol = $symbol, name = $name")
             } catch (error: Throwable) {
                 Log.e("e", "trc20TokenInfoTest error", error)
+                error.printStackTrace()
+            }
+        }
+    }
+
+    fun trc20AllowanceTest() {
+        viewModelScope.launch(Dispatchers.Default) {
+            try {
+                val usdt = Address.fromBase58("TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t")
+                val sunSwapRouter = Address.fromBase58("TXF1xDbVGdxFGbovmmmXvBGu8ZiE3Lq4mR")
+
+                val allowance = kit.getTrc20Allowance(usdt, sunSwapRouter)
+
+                Log.e("e", "allowance: $allowance")
+
+            } catch (error: Throwable) {
+                Log.e("e", "trc20AllowanceTest error", error)
                 error.printStackTrace()
             }
         }

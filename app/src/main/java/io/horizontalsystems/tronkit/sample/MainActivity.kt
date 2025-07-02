@@ -129,7 +129,7 @@ fun Balance(viewModel: MainViewModel) {
 
         Spacer(modifier = Modifier.height(50.dp))
         Button(onClick = {
-            viewModel.trc20TokenInfoTest()
+            viewModel.trc20AllowanceTest()
         }) {
             Text(text = "TEST BUTTON")
         }

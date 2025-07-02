@@ -48,7 +48,8 @@ class TronKit(
     private val transactionManager: TransactionManager,
     private val transactionSender: TransactionSender,
     private val feeProvider: FeeProvider,
-    private val chainParameterManager: ChainParameterManager
+    private val chainParameterManager: ChainParameterManager,
+    private val allowanceManager: AllowanceManager
 ) {
     private var started = false
     private var scope: CoroutineScope? = null
@@ -105,6 +106,10 @@ class TronKit(
 
     fun getTrc20BalanceFlow(contractAddress: String): Flow<BigInteger> {
         return accountInfoManager.getTrc20BalanceFlow(contractAddress)
+    }
+
+    suspend fun getTrc20Allowance(contract: Address, spender: Address): BigInteger {
+        return allowanceManager.allowance(contract, spender)
     }
 
     fun getFullTransactionsFlow(tags: List<List<String>>): Flow<List<FullTransaction>> {
@@ -282,8 +287,19 @@ class TronKit(
             val transactionSender = TransactionSender(tronGridService)
             val chainParameterManager = ChainParameterManager(tronGridService, storage)
             val feeProvider = FeeProvider(tronGridService, chainParameterManager)
+            val allowanceManager = AllowanceManager(address, tronGridService)
 
-            return TronKit(address, network, syncer, accountInfoManager, transactionManager, transactionSender, feeProvider, chainParameterManager)
+            return TronKit(
+                address,
+                network,
+                syncer,
+                accountInfoManager,
+                transactionManager,
+                transactionSender,
+                feeProvider,
+                chainParameterManager,
+                allowanceManager
+            )
         }
     }
 
