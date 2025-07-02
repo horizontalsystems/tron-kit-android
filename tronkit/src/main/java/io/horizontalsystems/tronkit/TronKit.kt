@@ -165,6 +165,10 @@ class TronKit(
         )
     }
 
+    fun approveTrc20TriggerSmartContract(contract: Address, spender: Address, amount: BigInteger): TriggerSmartContract {
+        return allowanceManager.approveTrc20TriggerSmartContract(contract, spender, amount)
+    }
+
     suspend fun send(contract: Contract, signer: Signer, feeLimit: Long? = null): String {
         val createdTransaction = transactionSender.createTransaction(contract, feeLimit)
         return send(createdTransaction, signer)

@@ -163,6 +163,38 @@ class MainViewModel(
         }
     }
 
+    fun trc20ApproveTest() {
+        viewModelScope.launch(Dispatchers.Default) {
+            val usdt = Address.fromBase58("TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t")
+            val sunSwapRouter = Address.fromBase58("TXF1xDbVGdxFGbovmmmXvBGu8ZiE3Lq4mR")
+
+            val triggerSmartContract = kit.approveTrc20TriggerSmartContract(
+                contract = usdt,
+                spender = sunSwapRouter,
+                amount = BigInteger.valueOf(37_000_000)
+            )
+
+            val fees = kit.estimateFee(triggerSmartContract)
+            Log.e("e", "fees: ${fees.size}")
+            fees.forEach {
+                Log.e("e", "fee $it")
+            }
+
+            val feeLimit = fees.sumOf { it.feeInSuns }
+            Log.e("e", "total feeLimit: $feeLimit ")
+
+            val energyFeeLimit = (fees.find { it is Fee.Energy } as? Fee.Energy)?.feeInSuns
+            Log.e("e", "energy feeLimit: $energyFeeLimit ")
+
+            val sendResult = kit.send(
+                contract = triggerSmartContract,
+                signer = signer,
+                feeLimit = energyFeeLimit
+            )
+            Log.e("e", "sendResult: $sendResult")
+        }
+    }
+
 }
 
 class MainViewModelFactory : ViewModelProvider.Factory {
