@@ -132,6 +132,12 @@ class TronKit(
         return feeProvider.estimateFee(contract)
     }
 
+    suspend fun estimateFee(createdTransaction: CreatedTransaction): List<Fee> {
+        // estimates fee for the first contract
+        val contract = Contract.from(createdTransaction.raw_data.contract.firstOrNull())
+        return contract?.let { feeProvider.estimateFee(it) } ?: throw java.lang.IllegalStateException("No contract!")
+    }
+
     suspend fun isAccountActive(address: Address): Boolean {
         return feeProvider.isAccountActive(address)
     }

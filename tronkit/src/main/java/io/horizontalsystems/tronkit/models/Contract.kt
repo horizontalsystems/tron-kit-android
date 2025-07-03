@@ -83,105 +83,105 @@ sealed class Contract {
     companion object {
         private val gson: Gson = Gson()
 
-        fun from(contractsJson: String): Contract? {
+        fun from(raw: ContractRaw?): Contract? =
+            when (raw?.type) {
+                "TransferContract" -> {
+                    TransferContract(
+                        amount = raw.amount!!,
+                        ownerAddress = raw.ownerAddress!!,
+                        toAddress = raw.toAddress!!
+                    )
+                }
+
+                "TransferAssetContract" -> {
+                    TransferAssetContract(
+                        amount = raw.amount!!,
+                        assetName = raw.assetName!!,
+                        ownerAddress = raw.ownerAddress!!,
+                        toAddress = raw.toAddress!!
+                    )
+                }
+
+                "WithdrawBalanceContract" -> {
+                    WithdrawBalanceContract(
+                        amount = raw.withdrawAmount!!,
+                        ownerAddress = raw.ownerAddress!!
+                    )
+                }
+
+                "TriggerSmartContract" -> {
+                    val value = raw.parameter.value
+                    TriggerSmartContract(
+                        data = raw.data!!,
+                        ownerAddress = raw.ownerAddress!!,
+                        contractAddress = raw.contractAddress!!,
+                        callValue = value.call_value,
+                        callTokenValue = value.call_token_value,
+                        tokenId = value.token_id
+                    )
+                }
+
+                "AssetIssueContract" -> {
+                    val value = raw.parameter.value
+                    AssetIssueContract(
+                        totalSupply = value.total_supply!!,
+                        precision = value.precision!!,
+                        name = value.name!!,
+                        description = value.description!!,
+                        ownerAddress = raw.ownerAddress!!,
+                        abbreviation = value.abbr!!,
+                        url = value.url!!
+                    )
+                }
+
+                "UnfreezeBalanceV2Contract" -> {
+                    val value = raw.parameter.value
+                    UnfreezeBalanceV2Contract(
+                        resource = value.resource!!,
+                        ownerAddress = raw.ownerAddress!!,
+                        unfreezeBalance = value.unfreeze_balance!!
+                    )
+                }
+
+                "FreezeBalanceV2Contract" -> {
+                    val value = raw.parameter.value
+                    FreezeBalanceV2Contract(
+                        resource = value.resource ?: "",
+                        ownerAddress = raw.ownerAddress!!,
+                        frozenBalance = value.frozen_balance!!
+                    )
+                }
+
+                "VoteWitnessContract" -> {
+                    val value = raw.parameter.value
+                    VoteWitnessContract(
+                        ownerAddress = raw.ownerAddress!!,
+                        votes = value.votes!!.map { vote ->
+                            VoteWitnessContract.Vote(
+                                address = Address.fromHex(vote.vote_address),
+                                count = vote.vote_count
+                            )
+                        }
+                    )
+                }
+
+                "CreateSmartContract" -> {
+                    CreateSmartContract(raw.ownerAddress!!)
+                }
+
+                else -> null
+            }
+
+        fun from(contractsJson: String): Contract? =
             try {
                 val contracts: List<ContractRaw> = gson.fromJson(contractsJson, object : TypeToken<List<ContractRaw>>() {}.type)
-                val contract = contracts.firstOrNull()
+                val contractRaw = contracts.firstOrNull()
+                val contract = from(contractRaw)
 
-                return when (contract?.type) {
-
-                    "TransferContract" -> {
-                        TransferContract(
-                            amount = contract.amount!!,
-                            ownerAddress = contract.ownerAddress!!,
-                            toAddress = contract.toAddress!!
-                        )
-                    }
-
-                    "TransferAssetContract" -> {
-                        TransferAssetContract(
-                            amount = contract.amount!!,
-                            assetName = contract.assetName!!,
-                            ownerAddress = contract.ownerAddress!!,
-                            toAddress = contract.toAddress!!
-                        )
-                    }
-
-                    "WithdrawBalanceContract" -> {
-                        WithdrawBalanceContract(
-                            amount = contract.withdrawAmount!!,
-                            ownerAddress = contract.ownerAddress!!
-                        )
-                    }
-
-                    "TriggerSmartContract" -> {
-                        val value = contract.parameter.value
-                        TriggerSmartContract(
-                            data = contract.data!!,
-                            ownerAddress = contract.ownerAddress!!,
-                            contractAddress = contract.contractAddress!!,
-                            callValue = value.call_value,
-                            callTokenValue = value.call_token_value,
-                            tokenId = value.token_id
-                        )
-                    }
-
-                    "AssetIssueContract" -> {
-                        val value = contract.parameter.value
-                        AssetIssueContract(
-                            totalSupply = value.total_supply!!,
-                            precision = value.precision!!,
-                            name = value.name!!,
-                            description = value.description!!,
-                            ownerAddress = contract.ownerAddress!!,
-                            abbreviation = value.abbr!!,
-                            url = value.url!!
-                        )
-                    }
-
-                    "UnfreezeBalanceV2Contract" -> {
-                        val value = contract.parameter.value
-                        UnfreezeBalanceV2Contract(
-                            resource = value.resource!!,
-                            ownerAddress = contract.ownerAddress!!,
-                            unfreezeBalance = value.unfreeze_balance!!
-                        )
-                    }
-
-                    "FreezeBalanceV2Contract" -> {
-                        val value = contract.parameter.value
-                        FreezeBalanceV2Contract(
-                            resource = value.resource ?: "",
-                            ownerAddress = contract.ownerAddress!!,
-                            frozenBalance = value.frozen_balance!!
-                        )
-                    }
-
-                    "VoteWitnessContract" -> {
-                        val value = contract.parameter.value
-                        VoteWitnessContract(
-                            ownerAddress = contract.ownerAddress!!,
-                            votes = value.votes!!.map { vote ->
-                                VoteWitnessContract.Vote(
-                                    address = Address.fromHex(vote.vote_address),
-                                    count = vote.vote_count
-                                )
-                            }
-                        )
-                    }
-
-                    "CreateSmartContract" -> {
-                        CreateSmartContract(contract.ownerAddress!!)
-                    }
-
-                    else -> {
-                        Unknown(contract?.type, contractsJson)
-                    }
-                }
-            } catch (error: Throwable) {
-                return null
+                contract ?: Unknown(contractRaw?.type, contractsJson)
+            } catch (_: Throwable) {
+                null
             }
-        }
     }
 
 }
