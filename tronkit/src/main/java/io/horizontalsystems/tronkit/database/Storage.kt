@@ -10,7 +10,6 @@ import io.horizontalsystems.tronkit.models.TransactionSyncState
 import io.horizontalsystems.tronkit.models.TransactionTag
 import io.horizontalsystems.tronkit.models.Trc20Balance
 import io.horizontalsystems.tronkit.models.Trc20EventRecord
-import io.horizontalsystems.tronkit.toRawHexString
 import java.math.BigInteger
 
 class Storage(
@@ -70,6 +69,43 @@ class Storage(
         return database.transactionDao().getTransactions()
     }
 
+    suspend fun getPendingTransactions(tags: List<List<String>>): List<Transaction> {
+        val whereConditions = mutableListOf<String>()
+        var transactionTagJoinStatements = ""
+
+        if (tags.isNotEmpty()) {
+            val tagCondition = tags
+                .mapIndexed { index, andTags ->
+                    val tagsString = andTags.joinToString(", ") { "'$it'" }
+                    "transaction_tags_$index.name IN ($tagsString)"
+                }
+                .joinToString(" AND ")
+
+            whereConditions.add(tagCondition)
+
+            transactionTagJoinStatements += tags
+                .mapIndexed { index, _ ->
+                    "INNER JOIN TransactionTag AS transaction_tags_$index ON tx.hash = transaction_tags_$index.hash"
+                }
+                .joinToString("\n")
+        }
+
+        whereConditions.add(
+            "tx.confirmed == false"
+        )
+
+        val whereClause = if (whereConditions.isNotEmpty()) "WHERE ${whereConditions.joinToString(" AND ")}" else ""
+
+        val sqlQuery = """
+                      SELECT tx.*
+                      FROM `Transaction` as tx
+                      $transactionTagJoinStatements
+                      $whereClause
+                      """
+
+        return database.transactionDao().getTransactionsByRawQuery(SimpleSQLiteQuery(sqlQuery))
+    }
+
     fun saveTransactions(transactions: List<Transaction>) {
         database.transactionDao().insertTransactions(transactions)
     }
@@ -79,14 +115,14 @@ class Storage(
     }
 
     suspend fun getTransactionsBefore(tags: List<List<String>>, hash: ByteArray?, limit: Int?): List<Transaction> {
-        return getTransactionsBefore(tags, hash, true, limit)
+        return getTransactionsFrom(tags, hash, true, limit)
     }
 
     suspend fun getTransactionsAfter(tags: List<List<String>>, hash: ByteArray?, limit: Int?): List<Transaction> {
-        return getTransactionsBefore(tags, hash, false, limit)
+        return getTransactionsFrom(tags, hash, false, limit)
     }
 
-   private suspend fun getTransactionsBefore(tags: List<List<String>>, hash: ByteArray?, descending: Boolean, limit: Int?): List<Transaction> {
+   private suspend fun getTransactionsFrom(tags: List<List<String>>, hash: ByteArray?, descending: Boolean, limit: Int?): List<Transaction> {
         val whereConditions = mutableListOf<String>()
 
         if (tags.isNotEmpty()) {

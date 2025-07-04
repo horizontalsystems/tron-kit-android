@@ -65,6 +65,13 @@ class TransactionManager(
         return decorationManager.decorateTransactions(transactions)
     }
 
+    suspend fun getPendingTransactions(tags: List<List<String>>): List<FullTransaction> {
+        return storage.getPendingTransactions(tags)
+            .let { transactions ->
+                decorationManager.decorateTransactions(transactions)
+            }
+    }
+
     fun handle(createdTransaction: CreatedTransaction) {
         val transaction = Transaction(
             hash = createdTransaction.txID.hexStringToByteArray(),

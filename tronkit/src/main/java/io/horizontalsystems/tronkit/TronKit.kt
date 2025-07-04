@@ -128,6 +128,10 @@ class TronKit(
         return transactionManager.getFullTransactionsAfter(tags, fromHash, limit)
     }
 
+    suspend fun getPendingTransactions(tags: List<List<String>>): List<FullTransaction> {
+        return transactionManager.getPendingTransactions(tags)
+    }
+
     suspend fun estimateFee(contract: Contract): List<Fee> {
         return feeProvider.estimateFee(contract)
     }
