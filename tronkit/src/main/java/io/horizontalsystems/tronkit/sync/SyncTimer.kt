@@ -2,8 +2,12 @@ package io.horizontalsystems.tronkit.sync
 
 import io.horizontalsystems.tronkit.TronKit
 import io.horizontalsystems.tronkit.network.ConnectionManager
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
@@ -19,6 +23,7 @@ class SyncTimer(
 
     private var scope: CoroutineScope? = null
     private var isStarted = false
+    private var isPaused = false
     private var timerJob: Job? = null
     private var listener: Listener? = null
 
@@ -49,6 +54,7 @@ class SyncTimer(
 
     fun stop() {
         isStarted = false
+        isPaused = false
 
         connectionManager.stop()
         state = State.NotReady(TronKit.SyncError.NotStarted())
@@ -56,12 +62,30 @@ class SyncTimer(
         stopTimer()
     }
 
+    fun pause() {
+        if (!isStarted || isPaused) return
+
+        isPaused = true
+        stopTimer()
+    }
+
+    fun resume() {
+        if (!isStarted || !isPaused) return
+
+        isPaused = false
+        if (connectionManager.isConnected) {
+            startTimer()
+        }
+    }
+
     private fun handleConnectionChange() {
         if (!isStarted) return
 
         if (connectionManager.isConnected) {
             state = State.Ready
-            startTimer()
+            if (!isPaused) {
+                startTimer()
+            }
         } else {
             state = State.NotReady(TronKit.SyncError.NoNetworkConnection())
             stopTimer()

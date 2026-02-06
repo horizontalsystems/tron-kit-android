@@ -96,6 +96,14 @@ class TronKit(
         scope?.cancel()
     }
 
+    fun pause() {
+        syncer.pause()
+    }
+
+    fun resume() {
+        syncer.resume()
+    }
+
     fun refresh() {
         syncer.refresh()
     }
