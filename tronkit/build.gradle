@@ -63,6 +63,10 @@ android {
     }
 }
 
+kotlin {
+    jvmToolchain(17)
+}
+
 dependencies {
 
     implementation 'com.github.horizontalsystems:hd-wallet-kit-android:a74b51f'
