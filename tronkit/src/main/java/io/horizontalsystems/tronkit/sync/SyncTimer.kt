@@ -93,6 +93,7 @@ class SyncTimer(
     }
 
     private fun startTimer() {
+        timerJob?.cancel()
         timerJob = scope?.launch {
             flow {
                 while (isActive) {

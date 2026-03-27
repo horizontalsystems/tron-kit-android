@@ -15,6 +15,7 @@ import io.reactivex.Single
 import kotlinx.coroutines.rx2.await
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
+import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
@@ -24,6 +25,7 @@ import retrofit2.http.*
 import java.math.BigInteger
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.random.Random
 import java.util.logging.Logger
 
 class TronGridService(
@@ -44,16 +46,37 @@ class TronGridService(
     private val gson: Gson
 
     init {
-        val loggingInterceptor = HttpLoggingInterceptor { message -> logger.info(message) }.setLevel(HttpLoggingInterceptor.Level.BASIC)
-        val headersInterceptor = Interceptor { chain ->
-            val requestBuilder = chain.request().newBuilder()
-            requestBuilder.header("TRON-PRO-API-KEY", apiKeyProvider.apiKey())
-            chain.proceed(requestBuilder.build())
+        val loggingInterceptor = HttpLoggingInterceptor { message -> logger.info(message) }.setLevel(HttpLoggingInterceptor.Level.BODY)
+        val keys = apiKeyProvider.apiKeys
+        val currentKeyIndex = AtomicInteger(Random.nextInt(keys.size))
+        val apiKeyInterceptor = Interceptor { chain ->
+            val originalRequest = chain.request()
+            val startIndex = currentKeyIndex.get()
+            var previousResponse: Response? = null
+
+            for (attempt in keys.indices) {
+                val keyIndex = (startIndex + attempt) % keys.size
+                val newRequest = originalRequest.newBuilder()
+                    .header("TRON-PRO-API-KEY", keys[keyIndex])
+                    .build()
+                previousResponse?.close()
+                val response = chain.proceed(newRequest)
+
+                if (response.code != 429 || attempt == keys.lastIndex) {
+                    currentKeyIndex.set(keyIndex)
+                    return@Interceptor response
+                }
+                // Advance index so concurrent/subsequent requests skip this 429 key
+                currentKeyIndex.compareAndSet(keyIndex, (keyIndex + 1) % keys.size)
+                previousResponse = response
+            }
+
+            chain.proceed(originalRequest)
         }
 
         val httpClient = OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
-            .addInterceptor(headersInterceptor)
+            .addInterceptor(apiKeyInterceptor)
             .connectTimeout(5, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
 

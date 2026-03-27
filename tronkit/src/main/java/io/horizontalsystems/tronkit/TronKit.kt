@@ -79,14 +79,9 @@ class TronKit(
         if (started) return
         started = true
 
-        scope = CoroutineScope(Dispatchers.IO)
-            .apply {
-                syncer.start(this)
-
-                launch {
-                    chainParameterManager.sync()
-                }
-            }
+        scope = CoroutineScope(Dispatchers.IO).also {
+            syncer.start(it)
+        }
     }
 
     fun stop() {
@@ -305,9 +300,9 @@ class TronKit(
                 addTransactionDecorator(Trc20TransactionDecorator(address))
             }
             val transactionManager = TransactionManager(address, storage, decorationManager, Gson())
-            val syncer = Syncer(address, syncTimer, tronGridService, accountInfoManager, transactionManager, storage)
-            val transactionSender = TransactionSender(tronGridService)
             val chainParameterManager = ChainParameterManager(tronGridService, storage)
+            val syncer = Syncer(address, syncTimer, tronGridService, accountInfoManager, transactionManager, chainParameterManager, storage)
+            val transactionSender = TransactionSender(tronGridService)
             val feeProvider = FeeProvider(tronGridService, chainParameterManager)
             val allowanceManager = AllowanceManager(address, tronGridService)
 
