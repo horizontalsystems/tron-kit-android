@@ -33,7 +33,7 @@ protobuf {
 
 android {
     namespace 'io.horizontalsystems.tronkit'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         minSdk 27

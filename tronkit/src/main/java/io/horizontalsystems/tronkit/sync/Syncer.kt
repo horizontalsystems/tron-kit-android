@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 
 class Syncer(
     private val address: Address,
@@ -20,6 +21,7 @@ class Syncer(
     private val tronGridService: TronGridService,
     private val accountInfoManager: AccountInfoManager,
     private val transactionManager: TransactionManager,
+    private val chainParameterManager: ChainParameterManager,
     private val storage: Storage
 ) : SyncTimer.Listener {
 
@@ -29,7 +31,7 @@ class Syncer(
         private const val orderBy = "block_timestamp,asc"
     }
 
-    private var syncing = false
+    private val syncing = AtomicBoolean(false)
     private var scope: CoroutineScope? = null
 
     var syncState: SyncState = SyncState.NotSynced(SyncError.NotStarted())
@@ -100,14 +102,16 @@ class Syncer(
     }
 
     override fun sync() {
-        if (syncing) {
+        if (!syncing.compareAndSet(false, true)) {
             return
         }
 
         scope?.launch {
-            syncing = true
-            syncLastBlockHeight()
-            syncing = false
+            try {
+                syncLastBlockHeight()
+            } finally {
+                syncing.set(false)
+            }
         }
     }
 
@@ -133,6 +137,7 @@ class Syncer(
         val contractTransactionSyncTimestamp = storage.getContractTransactionSyncBlockTimestamp() ?: 0
         val initial = transactionSyncTimestamp == 0L || contractTransactionSyncTimestamp == 0L
 
+        chainParameterManager.sync()
         syncAccountInfo()
         syncTransactions(transactionSyncTimestamp)
         syncContractTransactions(contractTransactionSyncTimestamp)
