@@ -40,9 +40,8 @@ class Storage(
     }
 
     fun allTrc20Addresses(): List<String> {
-        return database.balanceDao().getAll()
-            .filter { it.id.startsWith("TRC20|") }
-            .map { it.id.removePrefix("TRC20|") }
+        return database.balanceDao().getTrc20Ids()
+            .map { it.removePrefix("TRC20|") }
     }
 
     fun getTrc20Balance(contractAddress: String): BigInteger? {
