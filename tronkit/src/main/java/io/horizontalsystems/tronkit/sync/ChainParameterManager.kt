@@ -2,10 +2,11 @@ package io.horizontalsystems.tronkit.sync
 
 import io.horizontalsystems.tronkit.TronKit
 import io.horizontalsystems.tronkit.database.Storage
-import io.horizontalsystems.tronkit.network.TronGridService
+import io.horizontalsystems.tronkit.models.ChainParameter
+import io.horizontalsystems.tronkit.network.INodeApiProvider
 
 class ChainParameterManager(
-    private val tronGridService: TronGridService,
+    private val nodeApiProvider: INodeApiProvider,
     private val storage: Storage
 ) {
     var chainParameters: Map<String, Long> = emptyMap()
@@ -28,10 +29,11 @@ class ChainParameterManager(
 
     suspend fun sync() {
         syncState = try {
-            tronGridService.getChainParameters().let { parameters ->
+            nodeApiProvider.fetchChainParameters().let { parameters ->
                 chainParameters = parameters.associateBy({ it.key }, { it.value })
-
-                storage.saveChainParameters(parameters)
+                storage.saveChainParameters(parameters.map {
+                    ChainParameter(it.key, it.value)
+                })
             }
             TronKit.SyncState.Synced()
         } catch (error: Throwable) {

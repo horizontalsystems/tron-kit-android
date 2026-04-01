@@ -5,31 +5,32 @@ import io.horizontalsystems.tronkit.TronKit.SyncState
 import io.horizontalsystems.tronkit.account.AccountInfoManager
 import io.horizontalsystems.tronkit.database.Storage
 import io.horizontalsystems.tronkit.models.Address
-import io.horizontalsystems.tronkit.network.TronGridService
-import io.horizontalsystems.tronkit.network.TronGridService.TronGridServiceError
-import io.horizontalsystems.tronkit.transaction.TransactionManager
+import io.horizontalsystems.tronkit.network.IHistoryProvider
+import io.horizontalsystems.tronkit.network.INodeApiProvider
+import io.horizontalsystems.tronkit.network.IRpcApiProvider
+import io.horizontalsystems.tronkit.rpc.BlockNumberJsonRpc
+import io.horizontalsystems.tronkit.rpc.CallJsonRpc
+import io.horizontalsystems.tronkit.rpc.DefaultBlockParameter
+import io.horizontalsystems.tronkit.contracts.trc20.BalanceOfMethod
+import io.horizontalsystems.tronkit.toHexString
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.math.BigInteger
 import java.util.concurrent.atomic.AtomicBoolean
 
 class Syncer(
     private val address: Address,
     private val syncTimer: SyncTimer,
-    private val tronGridService: TronGridService,
+    private val rpcApiProvider: IRpcApiProvider,
+    private val nodeApiProvider: INodeApiProvider,
+    private val historyProvider: IHistoryProvider?,
     private val accountInfoManager: AccountInfoManager,
-    private val transactionManager: TransactionManager,
     private val chainParameterManager: ChainParameterManager,
-    private val storage: Storage
+    private val storage: Storage,
 ) : SyncTimer.Listener {
-
-    companion object {
-        private const val onlyConfirmed = true
-        private const val limit = 200
-        private const val orderBy = "block_timestamp,asc"
-    }
 
     private val syncing = AtomicBoolean(false)
     private var scope: CoroutineScope? = null
@@ -50,7 +51,6 @@ class Syncer(
             }
         }
 
-
     private val _syncStateFlow = MutableStateFlow(syncState)
     val syncStateFlow: StateFlow<SyncState> = _syncStateFlow
 
@@ -59,13 +59,12 @@ class Syncer(
 
     fun start(scope: CoroutineScope) {
         this.scope = scope
-
+        scope.launch { chainParameterManager.sync() }
         syncTimer.start(this, scope)
     }
 
     fun stop() {
         syncState = SyncState.NotSynced(SyncError.NotStarted())
-
         syncTimer.stop()
     }
 
@@ -79,124 +78,103 @@ class Syncer(
 
     fun refresh() {
         when (syncTimer.state) {
-            SyncTimer.State.Ready -> {
-                sync()
-            }
-
-            is SyncTimer.State.NotReady -> {
-                scope?.let { syncTimer.start(this, it) }
-            }
+            SyncTimer.State.Ready -> sync()
+            is SyncTimer.State.NotReady -> scope?.let { syncTimer.start(this, it) }
         }
     }
 
     override fun onUpdateSyncTimerState(state: SyncTimer.State) {
         syncState = when (state) {
-            is SyncTimer.State.NotReady -> {
-                SyncState.NotSynced(state.error)
-            }
-
-            SyncTimer.State.Ready -> {
-                SyncState.Syncing()
-            }
+            is SyncTimer.State.NotReady -> SyncState.NotSynced(state.error)
+            SyncTimer.State.Ready -> SyncState.Syncing()
         }
     }
 
     override fun sync() {
-        if (!syncing.compareAndSet(false, true)) {
-            return
-        }
+        if (!syncing.compareAndSet(false, true)) return
 
         scope?.launch {
             try {
-                syncLastBlockHeight()
+                syncBlockHeight()
             } finally {
                 syncing.set(false)
             }
         }
     }
 
-    private suspend fun syncLastBlockHeight() {
+    private suspend fun syncBlockHeight() {
         try {
-            val lastBlockHeight = tronGridService.getBlockHeight()
+            val blockHeight = rpcApiProvider.fetch(BlockNumberJsonRpc())
 
-            if (this.lastBlockHeight == lastBlockHeight) return
+            if (this.lastBlockHeight == blockHeight) {
+                syncState = SyncState.Synced()
+                return
+            }
 
-            storage.saveLastBlockHeight(lastBlockHeight)
-
-            this.lastBlockHeight = lastBlockHeight
-
-            onUpdateLastBlockHeight(lastBlockHeight)
+            storage.saveLastBlockHeight(blockHeight)
+            this.lastBlockHeight = blockHeight
+            onNewBlockHeight()
         } catch (error: Throwable) {
             error.printStackTrace()
             syncState = SyncState.NotSynced(error)
         }
     }
 
-    private suspend fun onUpdateLastBlockHeight(lastBlockHeight: Long) {
-        val transactionSyncTimestamp = storage.getTransactionSyncBlockTimestamp() ?: 0
-        val contractTransactionSyncTimestamp = storage.getContractTransactionSyncBlockTimestamp() ?: 0
-        val initial = transactionSyncTimestamp == 0L || contractTransactionSyncTimestamp == 0L
-
-        chainParameterManager.sync()
-        syncAccountInfo()
-        syncTransactions(transactionSyncTimestamp)
-        syncContractTransactions(contractTransactionSyncTimestamp)
-
-        transactionManager.process(initial)
+    private suspend fun onNewBlockHeight() {
+        if (historyProvider != null) {
+            try {
+                syncAccountViaHistory(historyProvider)
+            } catch (_: Throwable) {
+                syncAccountViaRpc()
+            }
+        } else {
+            syncAccountViaRpc()
+        }
 
         syncState = SyncState.Synced()
     }
 
-    private suspend fun syncAccountInfo() {
+    private suspend fun syncAccountViaHistory(provider: IHistoryProvider) {
         try {
-            val accountInfo = tronGridService.getAccountInfo(address.base58)
+            val accountInfo = provider.fetchAccountInfo(address.base58)
             accountInfoManager.handle(accountInfo)
-        } catch (error: TronGridServiceError.NoAccountInfoData) {
-            // no account info
+
+            // For watched tokens absent from the response, explicitly store zero
+            for (tokenAddress in accountInfoManager.trc20AddressesToSync()) {
+                if (accountInfo.trc20Balances.none { it.contractAddress == tokenAddress.hex }) {
+                    accountInfoManager.handle(BigInteger.ZERO, tokenAddress)
+                }
+            }
+        } catch (_: IHistoryProvider.RequestError.FailedToFetchAccountInfo) {
+            accountInfoManager.handleInactiveAccount()
         }
     }
 
-    private suspend fun syncTransactions(syncBlockTimestamp: Long) {
-        var fingerprint: String? = null
-        do {
-            val response = tronGridService.getTransactions(
-                address = address.base58,
-                startBlockTimestamp = syncBlockTimestamp + 1000,
-                fingerprint = fingerprint,
-                onlyConfirmed = onlyConfirmed,
-                limit = limit,
-                orderBy = orderBy
-            )
-            val transactionData = response.first
-            fingerprint = response.second
+    private suspend fun syncAccountViaRpc() {
+        val account = nodeApiProvider.fetchAccount(address.hex)
+        if (account == null) {
+            accountInfoManager.handleInactiveAccount()
+            return
+        }
 
-            if (transactionData.isNotEmpty()) {
-                transactionManager.saveTransactionData(transactionData, onlyConfirmed)
+        accountInfoManager.handle(account.balance)
 
-                storage.saveTransactionSyncTimestamp(transactionData.last().block_timestamp)
+        for (tokenAddress in accountInfoManager.trc20AddressesToSync()) {
+            try {
+                val methodData = BalanceOfMethod(address).encodedABI()
+                val rpc = CallJsonRpc(
+                    contractAddress = "0x${tokenAddress.hex}",
+                    data = methodData.toHexString(),
+                    defaultBlockParameter = DefaultBlockParameter.Latest.raw
+                )
+                val response = rpcApiProvider.fetch(rpc)
+                if (response.size >= 32) {
+                    val balance = BigInteger(1, response.sliceArray(0..31))
+                    accountInfoManager.handle(balance, tokenAddress)
+                }
+            } catch (_: Exception) {
+                // Skip failed balanceOf calls
             }
-        } while (fingerprint != null || transactionData.size >= limit)
-    }
-
-    private suspend fun syncContractTransactions(syncBlockTimestamp: Long) {
-        var fingerprint: String? = null
-        do {
-            val response = tronGridService.getContractTransactions(
-                address = address.base58,
-                startBlockTimestamp = syncBlockTimestamp + 1000,
-                fingerprint = fingerprint,
-                onlyConfirmed = onlyConfirmed,
-                limit = limit,
-                orderBy = orderBy
-            )
-            val transactionData = response.first
-            fingerprint = response.second
-
-            if (transactionData.isNotEmpty()) {
-                transactionManager.saveContractTransactionData(transactionData, onlyConfirmed)
-
-                storage.saveContractTransactionSyncTimestamp(transactionData.last().block_timestamp)
-            }
-        } while (fingerprint != null)
+        }
     }
 }

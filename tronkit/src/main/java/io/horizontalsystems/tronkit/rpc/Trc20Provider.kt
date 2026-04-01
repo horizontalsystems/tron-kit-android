@@ -6,14 +6,14 @@ import io.horizontalsystems.tronkit.contracts.trc20.NameMethod
 import io.horizontalsystems.tronkit.contracts.trc20.SymbolMethod
 import io.horizontalsystems.tronkit.decoration.TokenInfo
 import io.horizontalsystems.tronkit.models.Address
-import io.horizontalsystems.tronkit.network.ApiKeyProvider
-import io.horizontalsystems.tronkit.network.Network
-import io.horizontalsystems.tronkit.network.TronGridService
+import io.horizontalsystems.tronkit.models.RpcSource
+import io.horizontalsystems.tronkit.network.IRpcApiProvider
+import io.horizontalsystems.tronkit.network.TronGridProvider
 import io.horizontalsystems.tronkit.toBigInteger
 import io.horizontalsystems.tronkit.toHexString
 
 class Trc20Provider(
-    private val tronGridService: TronGridService
+    private val rpcApiProvider: IRpcApiProvider
 ) {
     class TokenNotFoundException : Throwable()
 
@@ -26,21 +26,24 @@ class Trc20Provider(
     }
 
     suspend fun getDecimals(contractAddress: Address): Int {
-        val response = tronGridService.ethCall(
+        val rpc = CallJsonRpc(
             contractAddress = "0x${contractAddress.hex}",
-            data = DecimalsMethod().encodedABI().toHexString()
+            data = DecimalsMethod().encodedABI().toHexString(),
+            defaultBlockParameter = DefaultBlockParameter.Latest.raw
         )
+        val response = rpcApiProvider.fetch(rpc)
         if (response.isEmpty()) throw TokenNotFoundException()
 
         return response.sliceArray(IntRange(0, 31)).toBigInteger().toInt()
     }
 
     suspend fun getTokenSymbol(contractAddress: Address): String {
-        val response = tronGridService.ethCall(
+        val rpc = CallJsonRpc(
             contractAddress = "0x${contractAddress.hex}",
-            data = SymbolMethod().encodedABI().toHexString()
+            data = SymbolMethod().encodedABI().toHexString(),
+            defaultBlockParameter = DefaultBlockParameter.Latest.raw
         )
-
+        val response = rpcApiProvider.fetch(rpc)
         if (response.isEmpty()) throw TokenNotFoundException()
 
         val argumentTypes = listOf(ByteArray::class)
@@ -51,11 +54,12 @@ class Trc20Provider(
     }
 
     suspend fun getTokenName(contractAddress: Address): String {
-        val response = tronGridService.ethCall(
+        val rpc = CallJsonRpc(
             contractAddress = "0x${contractAddress.hex}",
-            data = NameMethod().encodedABI().toHexString()
+            data = NameMethod().encodedABI().toHexString(),
+            defaultBlockParameter = DefaultBlockParameter.Latest.raw
         )
-
+        val response = rpcApiProvider.fetch(rpc)
         if (response.isEmpty()) throw TokenNotFoundException()
 
         val argumentTypes = listOf(ByteArray::class)
@@ -66,11 +70,9 @@ class Trc20Provider(
     }
 
     companion object {
-        fun getInstance(network: Network, tronGridApiKeys: List<String>): Trc20Provider {
-            val apiKeyProvider = ApiKeyProvider(tronGridApiKeys)
-            val tronGridService = TronGridService(network, apiKeyProvider)
-            return Trc20Provider(tronGridService)
+        fun getInstance(rpcSource: RpcSource): Trc20Provider {
+            val provider = TronGridProvider(rpcSource.urls.first(), rpcSource.apiKeys)
+            return Trc20Provider(provider)
         }
     }
-
 }

@@ -27,13 +27,22 @@ class Storage(
         return database.balanceDao().getBalance(trxBalanceId())?.balance
     }
 
-    fun saveBalances(trxBalance: BigInteger, balances: List<Trc20Balance>) {
-        database.runInTransaction {
-            database.balanceDao().deleteAll()
+    fun saveTrxBalance(balance: BigInteger) {
+        database.balanceDao().insert(Balance(trxBalanceId(), balance))
+    }
 
-            database.balanceDao().insert(Balance(trxBalanceId(), trxBalance))
-            database.balanceDao().insert(balances.map { (contractAddress, balance) -> Balance(trc20BalanceId(contractAddress), balance) })
-        }
+    fun saveTrc20Balance(balance: BigInteger, contractAddress: String) {
+        database.balanceDao().insert(Balance(trc20BalanceId(contractAddress), balance))
+    }
+
+    fun clearTrc20Balances() {
+        database.balanceDao().deleteTrc20Balances()
+    }
+
+    fun allTrc20Addresses(): List<String> {
+        return database.balanceDao().getAll()
+            .filter { it.id.startsWith("TRC20|") }
+            .map { it.id.removePrefix("TRC20|") }
     }
 
     fun getTrc20Balance(contractAddress: String): BigInteger? {
