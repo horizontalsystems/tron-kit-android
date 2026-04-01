@@ -14,16 +14,20 @@ import io.horizontalsystems.tronkit.decoration.trc20.Trc20TransactionDecorator
 import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.models.Contract
 import io.horizontalsystems.tronkit.models.FullTransaction
+import io.horizontalsystems.tronkit.models.RpcSource
+import io.horizontalsystems.tronkit.models.TransactionSource
 import io.horizontalsystems.tronkit.models.TransferContract
 import io.horizontalsystems.tronkit.models.TriggerSmartContract
-import io.horizontalsystems.tronkit.network.ApiKeyProvider
 import io.horizontalsystems.tronkit.network.ConnectionManager
 import io.horizontalsystems.tronkit.network.CreatedTransaction
+import io.horizontalsystems.tronkit.network.IHistoryProvider
 import io.horizontalsystems.tronkit.network.Network
-import io.horizontalsystems.tronkit.network.TronGridService
+import io.horizontalsystems.tronkit.network.TronGridProvider
+import io.horizontalsystems.tronkit.network.TronScanProvider
 import io.horizontalsystems.tronkit.sync.ChainParameterManager
 import io.horizontalsystems.tronkit.sync.SyncTimer
 import io.horizontalsystems.tronkit.sync.Syncer
+import io.horizontalsystems.tronkit.sync.TransactionSyncer
 import io.horizontalsystems.tronkit.transaction.Fee
 import io.horizontalsystems.tronkit.transaction.FeeProvider
 import io.horizontalsystems.tronkit.transaction.Signer
@@ -44,6 +48,7 @@ class TronKit(
     val address: Address,
     val network: Network,
     private val syncer: Syncer,
+    private val transactionSyncer: TransactionSyncer?,
     private val accountInfoManager: AccountInfoManager,
     private val transactionManager: TransactionManager,
     private val transactionSender: TransactionSender,
@@ -60,6 +65,12 @@ class TronKit(
     val lastBlockHeightFlow: StateFlow<Long>
         get() = syncer.lastBlockHeightFlow
 
+    val accountActive: Boolean
+        get() = accountInfoManager.accountActive
+
+    val accountActiveFlow: StateFlow<Boolean>
+        get() = accountInfoManager.accountActiveFlow
+
     val trxBalance: BigInteger
         get() = accountInfoManager.trxBalance
 
@@ -72,21 +83,34 @@ class TronKit(
     val syncStateFlow: StateFlow<SyncState>
         get() = syncer.syncStateFlow
 
+    val transactionsSyncState: SyncState
+        get() = transactionSyncer?.syncState ?: SyncState.NotSynced(SyncError.NoTransactionSource())
+
+    val transactionsSyncStateFlow: StateFlow<SyncState>?
+        get() = transactionSyncer?.syncStateFlow
+
     val transactionsFlow: StateFlow<Pair<List<FullTransaction>, Boolean>>
         get() = transactionManager.transactionsFlow
+
+    fun watchTrc20(contractAddress: Address) {
+        accountInfoManager.watchTrc20(contractAddress)
+    }
 
     fun start() {
         if (started) return
         started = true
 
-        scope = CoroutineScope(Dispatchers.IO).also {
-            syncer.start(it)
+        scope = CoroutineScope(Dispatchers.IO).also { s ->
+            syncer.start(s)
+            transactionSyncer?.start(s)
+            transactionSyncer?.sync()
         }
     }
 
     fun stop() {
         started = false
         syncer.stop()
+        transactionSyncer?.stop()
 
         scope?.cancel()
     }
@@ -101,6 +125,7 @@ class TronKit(
 
     fun refresh() {
         syncer.refresh()
+        transactionSyncer?.sync()
     }
 
     fun getTrc20Balance(contractAddress: String): BigInteger {
@@ -140,9 +165,8 @@ class TronKit(
     }
 
     suspend fun estimateFee(createdTransaction: CreatedTransaction): List<Fee> {
-        // estimates fee for the first contract
         val contract = Contract.from(createdTransaction.raw_data.contract.firstOrNull())
-        return contract?.let { feeProvider.estimateFee(it) } ?: throw java.lang.IllegalStateException("No contract!")
+        return contract?.let { feeProvider.estimateFee(it) } ?: throw IllegalStateException("No contract!")
     }
 
     suspend fun isAccountActive(address: Address): Boolean {
@@ -188,15 +212,9 @@ class TronKit(
     }
 
     suspend fun send(createdTransaction: CreatedTransaction, signer: Signer): String {
-        val response = transactionSender.broadcastTransaction(createdTransaction, signer)
-
-        check(response.result) {
-            throw IllegalStateException(response.code + " " + response.message)
-        }
-
+        val txId = transactionSender.broadcastTransaction(createdTransaction, signer)
         transactionManager.handle(createdTransaction)
-
-        return response.txid
+        return txId
     }
 
     fun statusInfo(): Map<String, Any> {
@@ -205,6 +223,7 @@ class TronKit(
         statusInfo["Started"] = started
         statusInfo["Last Block Height"] = lastBlockHeight
         statusInfo["Sync State"] = syncState
+        statusInfo["Transactions Sync State"] = transactionsSyncState
         statusInfo["Chain Parameters Sync State"] = chainParameterManager.syncState
 
         return statusInfo
@@ -222,23 +241,14 @@ class TronKit(
         }
 
         override fun equals(other: Any?): Boolean {
-            if (other !is SyncState)
-                return false
-
-            if (other.javaClass != this.javaClass)
-                return false
-
-            if (other is Syncing && this is Syncing) {
-                return other.progress == this.progress
-            }
-
+            if (other !is SyncState) return false
+            if (other.javaClass != this.javaClass) return false
+            if (other is Syncing && this is Syncing) return other.progress == this.progress
             return true
         }
 
         override fun hashCode(): Int {
-            if (this is Syncing) {
-                return Objects.hashCode(this.progress)
-            }
+            if (this is Syncing) return Objects.hashCode(this.progress)
             return Objects.hashCode(this.javaClass.name)
         }
     }
@@ -246,6 +256,7 @@ class TronKit(
     sealed class SyncError : Throwable() {
         class NotStarted : SyncError()
         class NoNetworkConnection : SyncError()
+        class NoTransactionSource : SyncError()
     }
 
     sealed class TransactionError : Throwable() {
@@ -267,17 +278,6 @@ class TronKit(
             TronDatabaseManager.clear(context, network, walletId)
         }
 
-        fun getInstance(
-            application: Application,
-            seed: ByteArray,
-            network: Network,
-            tronGridApiKeys: List<String>,
-            walletId: String
-        ): TronKit {
-            val address = getAddress(seed, network)
-            return getInstance(application, address, network, tronGridApiKeys, walletId)
-        }
-
         fun getAddress(seed: ByteArray, network: Network): Address {
             val privateKey = Signer.privateKey(seed, network)
             return Signer.address(privateKey, network)
@@ -285,14 +285,36 @@ class TronKit(
 
         fun getInstance(
             application: Application,
-            address: Address,
+            seed: ByteArray,
             network: Network,
-            tronGridApiKeys: List<String>,
+            rpcSource: RpcSource,
+            transactionSource: TransactionSource?,
             walletId: String
         ): TronKit {
+            val address = getAddress(seed, network)
+            return getInstance(application, address, network, rpcSource, transactionSource, walletId)
+        }
+
+        fun getInstance(
+            application: Application,
+            address: Address,
+            network: Network,
+            rpcSource: RpcSource,
+            transactionSource: TransactionSource?,
+            walletId: String
+        ): TronKit {
+            val tronGridProvider = TronGridProvider(rpcSource.urls.first(), rpcSource.apiKeys, rpcSource.auth)
+
+            val historyProvider: IHistoryProvider? = transactionSource?.let { source ->
+                when (source.type) {
+                    is TransactionSource.SourceType.TronGrid ->
+                        TronGridProvider(source.type.url, source.type.apiKeys)
+                    is TransactionSource.SourceType.TronScan ->
+                        TronScanProvider(source.type.url, source.type.apiKey)
+                }
+            }
+
             val syncTimer = SyncTimer(30, ConnectionManager(application))
-            val apiKeyProvider = ApiKeyProvider(tronGridApiKeys)
-            val tronGridService = TronGridService(network, apiKeyProvider)
             val mainDatabase = TronDatabaseManager.getMainDatabase(application, network, walletId)
             val storage = Storage(mainDatabase)
             val accountInfoManager = AccountInfoManager(storage)
@@ -300,16 +322,32 @@ class TronKit(
                 addTransactionDecorator(Trc20TransactionDecorator(address))
             }
             val transactionManager = TransactionManager(address, storage, decorationManager, Gson())
-            val chainParameterManager = ChainParameterManager(tronGridService, storage)
-            val syncer = Syncer(address, syncTimer, tronGridService, accountInfoManager, transactionManager, chainParameterManager, storage)
-            val transactionSender = TransactionSender(tronGridService)
-            val feeProvider = FeeProvider(tronGridService, chainParameterManager)
-            val allowanceManager = AllowanceManager(address, tronGridService)
+            val chainParameterManager = ChainParameterManager(tronGridProvider, storage)
+
+            val transactionSyncer = historyProvider?.let {
+                TransactionSyncer(it, transactionManager, storage, address)
+            }
+
+            val syncer = Syncer(
+                address = address,
+                syncTimer = syncTimer,
+                rpcApiProvider = tronGridProvider,
+                nodeApiProvider = tronGridProvider,
+                historyProvider = historyProvider,
+                accountInfoManager = accountInfoManager,
+                chainParameterManager = chainParameterManager,
+                storage = storage
+            )
+
+            val transactionSender = TransactionSender(tronGridProvider)
+            val feeProvider = FeeProvider(tronGridProvider, chainParameterManager)
+            val allowanceManager = AllowanceManager(address, tronGridProvider)
 
             return TronKit(
                 address,
                 network,
                 syncer,
+                transactionSyncer,
                 accountInfoManager,
                 transactionManager,
                 transactionSender,
@@ -318,6 +356,36 @@ class TronKit(
                 allowanceManager
             )
         }
-    }
 
+        // Backward-compatible overload — both sources from TronGrid with the same keys
+        fun getInstance(
+            application: Application,
+            seed: ByteArray,
+            network: Network,
+            tronGridApiKeys: List<String>,
+            walletId: String
+        ): TronKit = getInstance(
+            application,
+            seed,
+            network,
+            RpcSource.tronGrid(network, tronGridApiKeys),
+            TransactionSource.tronGrid(network, tronGridApiKeys),
+            walletId
+        )
+
+        fun getInstance(
+            application: Application,
+            address: Address,
+            network: Network,
+            tronGridApiKeys: List<String>,
+            walletId: String
+        ): TronKit = getInstance(
+            application,
+            address,
+            network,
+            RpcSource.tronGrid(network, tronGridApiKeys),
+            TransactionSource.tronGrid(network, tronGridApiKeys),
+            walletId
+        )
+    }
 }

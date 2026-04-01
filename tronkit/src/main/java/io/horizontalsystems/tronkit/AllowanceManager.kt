@@ -5,19 +5,23 @@ import io.horizontalsystems.tronkit.contracts.trc20.AllowanceMethod
 import io.horizontalsystems.tronkit.contracts.trc20.ApproveMethod
 import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.models.TriggerSmartContract
-import io.horizontalsystems.tronkit.network.TronGridService
+import io.horizontalsystems.tronkit.network.IRpcApiProvider
+import io.horizontalsystems.tronkit.rpc.CallJsonRpc
+import io.horizontalsystems.tronkit.rpc.DefaultBlockParameter
 import java.math.BigInteger
 
 class AllowanceManager(
     private val owner: Address,
-    private val tronGridService: TronGridService
+    private val rpcApiProvider: IRpcApiProvider
 ) {
 
     suspend fun allowance(contract: Address, spender: Address): BigInteger {
-        val response = tronGridService.ethCall(
+        val rpc = CallJsonRpc(
             contractAddress = "0x${contract.hex}",
-            data = AllowanceMethod(owner, spender).encodedABI().toHexString()
+            data = AllowanceMethod(owner, spender).encodedABI().toHexString(),
+            defaultBlockParameter = DefaultBlockParameter.Latest.raw
         )
+        val response = rpcApiProvider.fetch(rpc)
         if (response.isEmpty()) throw IllegalStateException()
 
         return BigInteger(response.sliceArray(0..31).toRawHexString(), 16)
