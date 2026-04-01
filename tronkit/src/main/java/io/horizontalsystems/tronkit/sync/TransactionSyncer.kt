@@ -46,9 +46,10 @@ class TransactionSyncer(
     }
 
     fun sync() {
+        val scope = this.scope ?: return
         if (!syncing.compareAndSet(false, true)) return
 
-        scope?.launch {
+        scope.launch {
             try {
                 doSync()
             } finally {
@@ -83,7 +84,7 @@ class TransactionSyncer(
         do {
             val (transactions, nextCursor) = historyProvider.fetchTransactions(
                 address = address.base58,
-                minTimestamp = syncBlockTimestamp + 1,
+                minTimestamp = syncBlockTimestamp,
                 cursor = cursor
             )
 
@@ -104,7 +105,7 @@ class TransactionSyncer(
         do {
             val (transactions, nextCursor) = historyProvider.fetchTrc20Transactions(
                 address = address.base58,
-                minTimestamp = syncBlockTimestamp + 1,
+                minTimestamp = syncBlockTimestamp,
                 cursor = cursor
             )
 

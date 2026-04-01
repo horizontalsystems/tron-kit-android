@@ -91,9 +91,10 @@ class Syncer(
     }
 
     override fun sync() {
+        val scope = this.scope ?: return
         if (!syncing.compareAndSet(false, true)) return
 
-        scope?.launch {
+        scope.launch {
             try {
                 syncBlockHeight()
             } finally {
