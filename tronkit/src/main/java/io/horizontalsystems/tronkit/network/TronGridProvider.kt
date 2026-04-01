@@ -50,7 +50,7 @@ class TronGridProvider(
 
     init {
         val loggingInterceptor = HttpLoggingInterceptor { message -> logger.info(message) }
-            .setLevel(HttpLoggingInterceptor.Level.BODY)
+            .setLevel(HttpLoggingInterceptor.Level.BASIC)
 
         val apiKeyInterceptor: Interceptor = if (apiKeys.isEmpty()) {
             Interceptor { chain -> chain.proceed(chain.request()) }
