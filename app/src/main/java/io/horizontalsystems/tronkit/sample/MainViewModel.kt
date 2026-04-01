@@ -13,6 +13,8 @@ import io.horizontalsystems.tronkit.TronKit
 import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.models.FullTransaction
 import io.horizontalsystems.tronkit.network.CreatedTransaction
+import io.horizontalsystems.tronkit.models.RpcSource
+import io.horizontalsystems.tronkit.models.TransactionSource
 import io.horizontalsystems.tronkit.network.Network
 import io.horizontalsystems.tronkit.rpc.Trc20Provider
 import io.horizontalsystems.tronkit.transaction.Fee
@@ -258,9 +260,12 @@ class MainViewModelFactory : ViewModelProvider.Factory {
         val apiKeys = listOf<String>()
         val words = " ".split(" ")
         val seed = Mnemonic().toSeed(words)
-        val kit = TronKit.getInstance(App.instance, seed, network, apiKeys, "tron-demo-app")
+        val rpcSource = RpcSource.tronGrid (network, apiKeys)
+        val transactionSource = TransactionSource.tronGrid(network, apiKeys)
+
+        val kit = TronKit.getInstance(App.instance, seed, network, rpcSource, transactionSource, "tron-demo-app")
         val signer = Signer.getInstance(seed, network)
-        val trc20Provider = Trc20Provider.getInstance(network, apiKeys)
+        val trc20Provider = Trc20Provider.getInstance(rpcSource)
 
         return MainViewModel(kit, signer, trc20Provider) as T
     }
