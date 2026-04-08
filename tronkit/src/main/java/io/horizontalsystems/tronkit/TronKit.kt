@@ -340,7 +340,7 @@ class TronKit(
             )
 
             val transactionSender = TransactionSender(tronGridProvider)
-            val feeProvider = FeeProvider(tronGridProvider, chainParameterManager)
+            val feeProvider = FeeProvider(tronGridProvider, tronGridProvider, chainParameterManager)
             val allowanceManager = AllowanceManager(address, tronGridProvider)
 
             return TronKit(
