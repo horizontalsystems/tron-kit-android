@@ -44,7 +44,7 @@ class TronGridProvider(
     private var currentRpcId = AtomicInteger(0)
     private val logger = Logger.getLogger("TronGridProvider")
     private val extensionApi: TronGridExtensionAPI
-    private val rpcApi: TronGridRpcAPI
+    private val rpcApi: TronRpcAPI
     private val gsonRpc: Gson
     private val gson: Gson
 
@@ -100,7 +100,7 @@ class TronGridProvider(
 
         val url = baseUrl.toString()
         gsonRpc = gson(isHex = true)
-        rpcApi = retrofit(httpClient, url, gsonRpc).create(TronGridRpcAPI::class.java)
+        rpcApi = retrofit(httpClient, url, gsonRpc).create(TronRpcAPI::class.java)
 
         gson = gson(isHex = false)
         extensionApi = retrofit(httpClient, url, gson).create(TronGridExtensionAPI::class.java)
@@ -279,7 +279,7 @@ class TronGridProvider(
 
     // Retrofit API interfaces
 
-    private interface TronGridRpcAPI {
+    private interface TronRpcAPI {
         @POST("jsonrpc")
         @Headers("Content-Type: application/json", "Accept: application/json")
         fun rpc(@Body jsonRpc: String): Single<RpcResponse>
@@ -287,9 +287,29 @@ class TronGridProvider(
 
     private interface TronGridExtensionAPI {
 
+        // Tron FullNode HTTP API
+
         @POST("wallet/getaccount")
         @Headers("Content-Type: application/json", "Accept: application/json")
         fun getAccount(@Body request: GetAccountRequest): Single<JsonObject>
+
+        @POST("wallet/createtransaction")
+        @Headers("Content-Type: application/json", "Accept: application/json")
+        fun createTransaction(@Body request: CreateTransactionRequest): Single<CreatedTransaction>
+
+        @POST("wallet/triggersmartcontract")
+        @Headers("Content-Type: application/json", "Accept: application/json")
+        fun triggerSmartContract(@Body request: TriggerSmartContractRequest): Single<TriggerSmartContractResponse>
+
+        @POST("wallet/broadcasttransaction")
+        @Headers("Content-Type: application/json", "Accept: application/json")
+        fun broadcastTransaction(@Body signedTransaction: SignedTransaction): Single<BroadcastTransactionResponse>
+
+        @GET("wallet/getchainparameters")
+        fun getChainParameters(): Single<ChainParametersResponse>
+
+
+        // TronGrid extension API
 
         @GET("v1/accounts/{address}")
         fun accountInfo(@Path("address") address: String): Single<AccountInfoResponse>
@@ -313,21 +333,6 @@ class TronGridProvider(
             @Query("limit") limit: Int,
             @Query("order_by") orderBy: String
         ): Single<ContractTransactionsResponse>
-
-        @POST("wallet/createtransaction")
-        @Headers("Content-Type: application/json", "Accept: application/json")
-        fun createTransaction(@Body request: CreateTransactionRequest): Single<CreatedTransaction>
-
-        @POST("wallet/triggersmartcontract")
-        @Headers("Content-Type: application/json", "Accept: application/json")
-        fun triggerSmartContract(@Body request: TriggerSmartContractRequest): Single<TriggerSmartContractResponse>
-
-        @POST("wallet/broadcasttransaction")
-        @Headers("Content-Type: application/json", "Accept: application/json")
-        fun broadcastTransaction(@Body signedTransaction: SignedTransaction): Single<BroadcastTransactionResponse>
-
-        @GET("wallet/getchainparameters")
-        fun getChainParameters(): Single<ChainParametersResponse>
     }
 
     companion object {
