@@ -15,12 +15,6 @@ interface INodeApiProvider {
         feeLimit: Long
     ): CreatedTransaction
     suspend fun broadcastTransaction(createdTransaction: CreatedTransaction, signature: ByteArray)
-    suspend fun estimateEnergy(
-        ownerAddress: String,
-        contractAddress: String,
-        functionSelector: String,
-        parameter: String
-    ): Long
 }
 
 data class NodeAccountResponse(val balance: BigInteger)

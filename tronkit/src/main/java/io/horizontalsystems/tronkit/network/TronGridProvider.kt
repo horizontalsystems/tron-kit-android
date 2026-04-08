@@ -189,28 +189,6 @@ class TronGridProvider(
         }
     }
 
-    override suspend fun estimateEnergy(
-        ownerAddress: String,
-        contractAddress: String,
-        functionSelector: String,
-        parameter: String
-    ): Long {
-        val response = extensionApi.estimateEnergy(
-            EstimateEnergyRequest(
-                owner_address = ownerAddress,
-                contract_address = contractAddress,
-                function_selector = functionSelector,
-                parameter = parameter
-            )
-        ).await()
-
-        check(response.result.result) {
-            "estimateEnergy error: ${response.result.code} - ${hexStringToUtf8String(response.result.message)}"
-        }
-
-        return response.energy_required
-    }
-
     // IHistoryProvider
 
     override suspend fun fetchAccountInfo(address: String): AccountInfo {
@@ -344,10 +322,6 @@ class TronGridProvider(
         @Headers("Content-Type: application/json", "Accept: application/json")
         fun triggerSmartContract(@Body request: TriggerSmartContractRequest): Single<TriggerSmartContractResponse>
 
-        @POST("wallet/estimateenergy")
-        @Headers("Content-Type: application/json", "Accept: application/json")
-        fun estimateEnergy(@Body request: EstimateEnergyRequest): Single<EstimateEnergyResponse>
-
         @POST("wallet/broadcasttransaction")
         @Headers("Content-Type: application/json", "Accept: application/json")
         fun broadcastTransaction(@Body signedTransaction: SignedTransaction): Single<BroadcastTransactionResponse>
@@ -391,19 +365,6 @@ data class TriggerSmartContractRequest(
 data class TriggerSmartContractResponse(
     val result: Result,
     val transaction: CreatedTransaction
-)
-
-data class EstimateEnergyRequest(
-    val owner_address: String,
-    val contract_address: String,
-    val function_selector: String,
-    val parameter: String,
-    val visible: Boolean = false
-)
-
-data class EstimateEnergyResponse(
-    val result: Result,
-    val energy_required: Long
 )
 
 data class Result(
