@@ -118,7 +118,9 @@ class TronGridProvider(
 
     override suspend fun fetchAccount(address: String): NodeAccountResponse? {
         val response = extensionApi.getAccount(GetAccountRequest(address)).await()
-        val balance = response["balance"]?.takeIf { !it.isJsonNull }?.asBigInteger ?: return null
+        if (response["create_time"] == null)
+            return null
+        val balance = response["balance"]?.takeIf { !it.isJsonNull }?.asBigInteger ?: BigInteger.ZERO
         return NodeAccountResponse(balance)
     }
 
