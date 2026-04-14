@@ -194,11 +194,15 @@ class TransactionManager(
         val trc20Events = mutableListOf<Trc20EventRecord>()
         val transactions = mutableListOf<Transaction>()
 
+        val existingTxHashes = storage.getTransactionHashes()
         transactionData.forEach {
             try {
+                val txHash = it.transaction_id.hexStringToByteArray()
+                if (existingTxHashes.any { it.contentEquals(txHash)}) return@forEach
+
                 transactions.add(
                     Transaction(
-                        hash = it.transaction_id.hexStringToByteArray(),
+                        hash = txHash,
                         timestamp = it.block_timestamp,
                         confirmed = confirmed
                     )
@@ -206,7 +210,7 @@ class TransactionManager(
 
                 trc20Events.add(
                     Trc20EventRecord(
-                        it.transaction_id.hexStringToByteArray(),
+                        txHash,
                         it.block_timestamp,
                         contractAddress = Address.fromBase58(it.token_info.address),
                         from = Address.fromBase58(it.from),

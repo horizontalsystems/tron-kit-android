@@ -44,6 +44,9 @@ interface TransactionDao {
     @Query("SELECT * FROM `Transaction` ORDER BY timestamp DESC")
     fun getTransactions(): List<Transaction>
 
+    @Query("SELECT `hash` FROM `Transaction` ORDER BY timestamp DESC")
+    fun getTransactionHashes(): List<ByteArray>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertInternalTransactions(transactions: List<InternalTransaction>)
 

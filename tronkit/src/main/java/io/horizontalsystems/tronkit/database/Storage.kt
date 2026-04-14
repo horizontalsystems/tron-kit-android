@@ -8,7 +8,6 @@ import io.horizontalsystems.tronkit.models.LastBlockHeight
 import io.horizontalsystems.tronkit.models.Transaction
 import io.horizontalsystems.tronkit.models.TransactionSyncState
 import io.horizontalsystems.tronkit.models.TransactionTag
-import io.horizontalsystems.tronkit.models.Trc20Balance
 import io.horizontalsystems.tronkit.models.Trc20EventRecord
 import java.math.BigInteger
 
@@ -75,6 +74,10 @@ class Storage(
 
     fun getTransactions(): List<Transaction> {
         return database.transactionDao().getTransactions()
+    }
+
+    fun getTransactionHashes(): List<ByteArray> {
+        return database.transactionDao().getTransactionHashes()
     }
 
     suspend fun getPendingTransactions(tags: List<List<String>>): List<Transaction> {
