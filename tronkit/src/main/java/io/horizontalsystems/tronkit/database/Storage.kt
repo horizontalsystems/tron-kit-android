@@ -76,10 +76,6 @@ class Storage(
         return database.transactionDao().getTransactions()
     }
 
-    fun getTransactionHashes(): List<ByteArray> {
-        return database.transactionDao().getTransactionHashes()
-    }
-
     suspend fun getPendingTransactions(tags: List<List<String>>): List<Transaction> {
         val whereConditions = mutableListOf<String>()
         var transactionTagJoinStatements = ""
@@ -123,6 +119,16 @@ class Storage(
 
     fun saveTransactionsIfNotExists(transactions: List<Transaction>) {
         database.transactionDao().insertTransactionsIfNotExists(transactions)
+    }
+
+    fun confirmPendingTransactions(transactions: List<Transaction>) {
+        transactions.forEach {
+            database.transactionDao().confirmTransaction(it.hash, it.timestamp)
+        }
+    }
+
+    fun getTrc20EventTransactionHashes(): List<ByteArray> {
+        return database.transactionDao().getTrc20EventTransactionHashes()
     }
 
     suspend fun getTransactionsBefore(tags: List<List<String>>, hash: ByteArray?, limit: Int?): List<Transaction> {

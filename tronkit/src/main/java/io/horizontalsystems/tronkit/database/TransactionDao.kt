@@ -35,6 +35,9 @@ interface TransactionDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insertTransactionsIfNotExists(transactions: List<Transaction>)
 
+    @Query("UPDATE `Transaction` SET confirmed = 1, timestamp = :timestamp, processed = 0 WHERE hash = :hash AND confirmed = 0")
+    fun confirmTransaction(hash: ByteArray, timestamp: Long)
+
     @Query("SELECT * FROM `Transaction` WHERE processed = 0 ORDER BY timestamp DESC")
     fun getUnprocessedTransactions(): List<Transaction>
 
@@ -44,8 +47,8 @@ interface TransactionDao {
     @Query("SELECT * FROM `Transaction` ORDER BY timestamp DESC")
     fun getTransactions(): List<Transaction>
 
-    @Query("SELECT `hash` FROM `Transaction` ORDER BY timestamp DESC")
-    fun getTransactionHashes(): List<ByteArray>
+    @Query("SELECT transactionHash FROM Trc20EventRecord")
+    fun getTrc20EventTransactionHashes(): List<ByteArray>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertInternalTransactions(transactions: List<InternalTransaction>)

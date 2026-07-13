@@ -194,11 +194,10 @@ class TransactionManager(
         val trc20Events = mutableListOf<Trc20EventRecord>()
         val transactions = mutableListOf<Transaction>()
 
-        val existingTxHashes = storage.getTransactionHashes()
+        val existingEventTxHashes = storage.getTrc20EventTransactionHashes()
         transactionData.forEach {
             try {
                 val txHash = it.transaction_id.hexStringToByteArray()
-                if (existingTxHashes.any { it.contentEquals(txHash)}) return@forEach
 
                 transactions.add(
                     Transaction(
@@ -208,20 +207,22 @@ class TransactionManager(
                     )
                 )
 
-                trc20Events.add(
-                    Trc20EventRecord(
-                        txHash,
-                        it.block_timestamp,
-                        contractAddress = Address.fromBase58(it.token_info.address),
-                        from = Address.fromBase58(it.from),
-                        to = Address.fromBase58(it.to),
-                        value = BigInteger(it.value),
-                        type = it.type,
-                        tokenName = it.token_info.name,
-                        tokenSymbol = it.token_info.symbol,
-                        tokenDecimal = it.token_info.decimals
+                if (existingEventTxHashes.none { hash -> hash.contentEquals(txHash) }) {
+                    trc20Events.add(
+                        Trc20EventRecord(
+                            txHash,
+                            it.block_timestamp,
+                            contractAddress = Address.fromBase58(it.token_info.address),
+                            from = Address.fromBase58(it.from),
+                            to = Address.fromBase58(it.to),
+                            value = BigInteger(it.value),
+                            type = it.type,
+                            tokenName = it.token_info.name,
+                            tokenSymbol = it.token_info.symbol,
+                            tokenDecimal = it.token_info.decimals
+                        )
                     )
-                )
+                }
             } catch (error: Throwable) {
                 Log.w("e", "Contract TransactionData parsing error: ${it.transaction_id}", error)
             }
@@ -229,6 +230,9 @@ class TransactionManager(
 
         storage.saveTrc20Events(trc20Events)
         storage.saveTransactionsIfNotExists(transactions)
+        if (confirmed) {
+            storage.confirmPendingTransactions(transactions)
+        }
     }
 
     data class TransactionWithTags(
