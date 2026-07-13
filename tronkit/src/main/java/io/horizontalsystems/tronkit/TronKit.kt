@@ -38,6 +38,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.math.BigInteger
@@ -104,6 +105,11 @@ class TronKit(
             syncer.start(s)
             transactionSyncer?.start(s)
             transactionSyncer?.sync()
+            transactionSyncer?.let { txSyncer ->
+                s.launch {
+                    syncer.lastBlockHeightFlow.drop(1).collect { txSyncer.sync() }
+                }
+            }
         }
     }
 

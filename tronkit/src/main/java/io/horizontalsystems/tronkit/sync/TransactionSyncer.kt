@@ -59,7 +59,10 @@ class TransactionSyncer(
     }
 
     private suspend fun doSync() {
-        syncState = SyncState.Syncing()
+        // Keep Synced stable during incremental re-syncs; only show Syncing on first sync or after an error
+        if (syncState !is SyncState.Synced) {
+            syncState = SyncState.Syncing()
+        }
         try {
             val transactionSyncTimestamp = storage.getTransactionSyncBlockTimestamp() ?: 0
             val contractTransactionSyncTimestamp = storage.getContractTransactionSyncBlockTimestamp() ?: 0
