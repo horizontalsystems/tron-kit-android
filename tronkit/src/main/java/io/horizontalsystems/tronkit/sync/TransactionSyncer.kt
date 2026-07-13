@@ -83,6 +83,7 @@ class TransactionSyncer(
     private suspend fun syncTransactions(syncBlockTimestamp: Long) {
         var cursor: String? = null
         var totalFetched = 0
+        var lastBlockTimestamp = 0L
 
         do {
             val (transactions, nextCursor) = historyProvider.fetchTransactions(
@@ -93,17 +94,26 @@ class TransactionSyncer(
 
             if (transactions.isNotEmpty()) {
                 transactionManager.saveTransactionData(transactions, confirmed = true)
-                storage.saveTransactionSyncTimestamp(transactions.last().block_timestamp)
+                lastBlockTimestamp = transactions.last().block_timestamp
+                storage.saveTransactionSyncTimestamp(lastBlockTimestamp)
             }
 
             totalFetched += transactions.size
             cursor = nextCursor
         } while (cursor != null && totalFetched < MAX_TRANSACTION_COUNT)
+
+        // minTimestamp is inclusive, so once history is fully drained advance the checkpoint past
+        // the last block to avoid refetching it every sync. When capped by MAX_TRANSACTION_COUNT,
+        // keep the raw timestamp so same-block transactions on the next page aren't skipped.
+        if (cursor == null && lastBlockTimestamp > 0) {
+            storage.saveTransactionSyncTimestamp(lastBlockTimestamp + 1)
+        }
     }
 
     private suspend fun syncContractTransactions(syncBlockTimestamp: Long) {
         var cursor: String? = null
         var totalFetched = 0
+        var lastBlockTimestamp = 0L
 
         do {
             val (transactions, nextCursor) = historyProvider.fetchTrc20Transactions(
@@ -114,11 +124,16 @@ class TransactionSyncer(
 
             if (transactions.isNotEmpty()) {
                 transactionManager.saveContractTransactionData(transactions, confirmed = true)
-                storage.saveContractTransactionSyncTimestamp(transactions.last().block_timestamp)
+                lastBlockTimestamp = transactions.last().block_timestamp
+                storage.saveContractTransactionSyncTimestamp(lastBlockTimestamp)
             }
 
             totalFetched += transactions.size
             cursor = nextCursor
         } while (cursor != null && totalFetched < MAX_TRANSACTION_COUNT)
+
+        if (cursor == null && lastBlockTimestamp > 0) {
+            storage.saveContractTransactionSyncTimestamp(lastBlockTimestamp + 1)
+        }
     }
 }
