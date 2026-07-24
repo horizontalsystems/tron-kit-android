@@ -44,8 +44,12 @@ class AccountInfoManager(
     }
 
     fun trc20AddressesToSync(): List<Address> {
+        // history-path rows are keyed by base58; tolerate legacy hex keys
         val knownFromDb = storage.allTrc20Addresses()
-            .mapNotNull { runCatching { Address.fromHex(it) }.getOrNull() }
+            .mapNotNull { key ->
+                runCatching { Address.fromBase58(key) }.getOrNull()
+                    ?: runCatching { Address.fromHex(key) }.getOrNull()
+            }
             .toSet()
         return (knownFromDb + watchedTokens).toList()
     }
@@ -78,10 +82,12 @@ class AccountInfoManager(
         this.trxBalance = trxBalance
     }
 
-    // Called when a single TRC20 balance comes from RPC balanceOf call
+    // Called when a single TRC20 balance comes from RPC balanceOf call.
+    // Keyed by base58 — the SAME key the history path stores and the wallet
+    // adapter reads; a hex key here would make the balance invisible.
     fun handle(trc20Balance: BigInteger, contractAddress: Address) {
-        storage.saveTrc20Balance(trc20Balance, contractAddress.hex)
-        updateTrc20Flow(contractAddress.hex, trc20Balance)
+        storage.saveTrc20Balance(trc20Balance, contractAddress.base58)
+        updateTrc20Flow(contractAddress.base58, trc20Balance)
     }
 
     fun handleInactiveAccount() {
