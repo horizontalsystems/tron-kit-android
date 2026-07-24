@@ -307,7 +307,11 @@ class TronKit(
             network: Network,
             rpcSource: RpcSource,
             transactionSource: TransactionSource?,
-            walletId: String
+            walletId: String,
+            // Gasless (e.g. GasFree CREATE2) accounts may hold TRC20 balances
+            // before the account exists on-chain — keeps the watched-token
+            // balanceOf sync running for inactive accounts.
+            gaslessAccount: Boolean = false
         ): TronKit {
             val tronGridProvider = TronGridProvider(rpcSource.urls.first(), rpcSource.apiKeys, rpcSource.auth)
 
@@ -342,7 +346,8 @@ class TronKit(
                 historyProvider = historyProvider,
                 accountInfoManager = accountInfoManager,
                 chainParameterManager = chainParameterManager,
-                storage = storage
+                storage = storage,
+                gaslessAccount = gaslessAccount
             )
 
             val transactionSender = TransactionSender(tronGridProvider)

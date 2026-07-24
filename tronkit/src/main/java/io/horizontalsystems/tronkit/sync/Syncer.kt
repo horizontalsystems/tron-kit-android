@@ -30,6 +30,10 @@ class Syncer(
     private val accountInfoManager: AccountInfoManager,
     private val chainParameterManager: ChainParameterManager,
     private val storage: Storage,
+    // Gasless (e.g. GasFree CREATE2) accounts may hold TRC20 balances before the
+    // account exists on-chain: an inactive account is not a reason to skip the
+    // watched-token balanceOf sync.
+    private val gaslessAccount: Boolean = false,
 ) : SyncTimer.Listener {
 
     private val syncing = AtomicBoolean(false)
@@ -148,6 +152,12 @@ class Syncer(
             }
         } catch (_: IHistoryProvider.RequestError.FailedToFetchAccountInfo) {
             accountInfoManager.handleInactiveAccount()
+            // Gasless accounts may receive TRC20 before the account is created
+            // on-chain. History endpoint refused, fall back to direct balanceOf
+            // RPC for watched tokens.
+            if (gaslessAccount) {
+                syncWatchedTrc20BalancesViaRpc()
+            }
         }
     }
 
@@ -155,11 +165,19 @@ class Syncer(
         val account = nodeApiProvider.fetchAccount(address.hex)
         if (account == null) {
             accountInfoManager.handleInactiveAccount()
-            return
+            // Gasless accounts may have TRC20 balances even when the native
+            // account is missing.
+            if (!gaslessAccount) {
+                return
+            }
+        } else {
+            accountInfoManager.handle(account.balance)
         }
 
-        accountInfoManager.handle(account.balance)
+        syncWatchedTrc20BalancesViaRpc()
+    }
 
+    private suspend fun syncWatchedTrc20BalancesViaRpc() {
         for (tokenAddress in accountInfoManager.trc20AddressesToSync()) {
             try {
                 val methodData = BalanceOfMethod(address).encodedABI()
