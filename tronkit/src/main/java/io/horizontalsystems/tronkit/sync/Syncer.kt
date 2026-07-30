@@ -144,9 +144,11 @@ class Syncer(
             val accountInfo = provider.fetchAccountInfo(address.base58)
             accountInfoManager.handle(accountInfo)
 
-            // For watched tokens absent from the response, explicitly store zero
+            // For watched tokens absent from the response, explicitly store zero.
+            // TronGrid keys the trc20 balance list by base58 (a hex comparison
+            // matches nothing and would zero out every present balance).
             for (tokenAddress in accountInfoManager.trc20AddressesToSync()) {
-                if (accountInfo.trc20Balances.none { it.contractAddress == tokenAddress.hex }) {
+                if (accountInfo.trc20Balances.none { it.contractAddress == tokenAddress.base58 }) {
                     accountInfoManager.handle(BigInteger.ZERO, tokenAddress)
                 }
             }
