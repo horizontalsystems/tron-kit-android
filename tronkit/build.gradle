@@ -80,8 +80,6 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 
     implementation 'com.squareup.retrofit2:retrofit:3.0.0'
-    implementation 'com.squareup.retrofit2:adapter-rxjava2:3.0.0'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-rx2:1.10.2'
 
     implementation "com.google.protobuf:protobuf-javalite:4.33.5"
 
