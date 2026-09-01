@@ -16,14 +16,11 @@ import io.horizontalsystems.tronkit.rpc.JsonRpc
 import io.horizontalsystems.tronkit.rpc.LongTypeAdapter
 import io.horizontalsystems.tronkit.rpc.RpcResponse
 import io.horizontalsystems.tronkit.toRawHexString
-import io.reactivex.Single
-import kotlinx.coroutines.rx2.await
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
-import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.converter.scalars.ScalarsConverterFactory
 import retrofit2.http.*
@@ -110,14 +107,14 @@ class TronGridProvider(
 
     override suspend fun <T> fetch(rpc: JsonRpc<T>): T {
         rpc.id = currentRpcId.incrementAndGet()
-        val response = rpcApi.rpc(gsonRpc.toJson(rpc)).await()
+        val response = rpcApi.rpc(gsonRpc.toJson(rpc))
         return rpc.parseResponse(response, gsonRpc)
     }
 
     // INodeApiProvider
 
     override suspend fun fetchAccount(address: String): NodeAccountResponse? {
-        val response = extensionApi.getAccount(GetAccountRequest(address)).await()
+        val response = extensionApi.getAccount(GetAccountRequest(address))
         if (response["create_time"] == null)
             return null
         val balance = response["balance"]?.takeIf { !it.isJsonNull }?.asBigInteger ?: BigInteger.ZERO
@@ -125,7 +122,7 @@ class TronGridProvider(
     }
 
     override suspend fun fetchChainParameters(): List<ChainParameterResponse> {
-        val response = extensionApi.getChainParameters().await()
+        val response = extensionApi.getChainParameters()
         return response.chainParameter.map { ChainParameterResponse(it.key, it.value) }
     }
 
@@ -140,7 +137,7 @@ class TronGridProvider(
                 to_address = toAddress,
                 amount = amount
             )
-        ).await()
+        )
 
         check(response.Error == null) {
             "createTransaction error: ${response.Error?.let { hexStringToUtf8String(it) }}"
@@ -166,7 +163,7 @@ class TronGridProvider(
                 fee_limit = feeLimit,
                 call_value = callValue
             )
-        ).await()
+        )
 
         check(response.result.result) {
             "triggerSmartContract error: ${response.result.code} - ${hexStringToUtf8String(response.result.message)}"
@@ -184,7 +181,7 @@ class TronGridProvider(
                 raw_data_hex = createdTransaction.raw_data_hex,
                 signature = listOf(signature.toRawHexString())
             )
-        ).await()
+        )
 
         check(response.result) {
             "broadcastTransaction error: ${response.code} - ${hexStringToUtf8String(response.message)}"
@@ -194,7 +191,7 @@ class TronGridProvider(
     // IHistoryProvider
 
     override suspend fun fetchAccountInfo(address: String): AccountInfo {
-        val response = extensionApi.accountInfo(address).await()
+        val response = extensionApi.accountInfo(address)
         val data = response.data.firstOrNull()
             ?: throw IHistoryProvider.RequestError.FailedToFetchAccountInfo
 
@@ -219,7 +216,7 @@ class TronGridProvider(
             onlyConfirmed = true,
             limit = PAGE_LIMIT,
             orderBy = ORDER_BY
-        ).await()
+        )
 
         check(response.success) { "fetchTransactions failed" }
 
@@ -246,7 +243,7 @@ class TronGridProvider(
             onlyConfirmed = true,
             limit = PAGE_LIMIT,
             orderBy = ORDER_BY
-        ).await()
+        )
 
         check(response.success) { "fetchTrc20Transactions failed" }
 
@@ -273,7 +270,6 @@ class TronGridProvider(
     private fun retrofit(httpClient: OkHttpClient.Builder, baseUrl: String, gson: Gson): Retrofit =
         Retrofit.Builder()
             .baseUrl(baseUrl)
-            .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
             .addConverterFactory(ScalarsConverterFactory.create())
             .addConverterFactory(GsonConverterFactory.create(gson))
             .client(httpClient.build())
@@ -284,7 +280,7 @@ class TronGridProvider(
     private interface TronRpcAPI {
         @POST("jsonrpc")
         @Headers("Content-Type: application/json", "Accept: application/json")
-        fun rpc(@Body jsonRpc: String): Single<RpcResponse>
+        suspend fun rpc(@Body jsonRpc: String): RpcResponse
     }
 
     private interface TronGridExtensionAPI {
@@ -293,48 +289,48 @@ class TronGridProvider(
 
         @POST("wallet/getaccount")
         @Headers("Content-Type: application/json", "Accept: application/json")
-        fun getAccount(@Body request: GetAccountRequest): Single<JsonObject>
+        suspend fun getAccount(@Body request: GetAccountRequest): JsonObject
 
         @POST("wallet/createtransaction")
         @Headers("Content-Type: application/json", "Accept: application/json")
-        fun createTransaction(@Body request: CreateTransactionRequest): Single<CreatedTransaction>
+        suspend fun createTransaction(@Body request: CreateTransactionRequest): CreatedTransaction
 
         @POST("wallet/triggersmartcontract")
         @Headers("Content-Type: application/json", "Accept: application/json")
-        fun triggerSmartContract(@Body request: TriggerSmartContractRequest): Single<TriggerSmartContractResponse>
+        suspend fun triggerSmartContract(@Body request: TriggerSmartContractRequest): TriggerSmartContractResponse
 
         @POST("wallet/broadcasttransaction")
         @Headers("Content-Type: application/json", "Accept: application/json")
-        fun broadcastTransaction(@Body signedTransaction: SignedTransaction): Single<BroadcastTransactionResponse>
+        suspend fun broadcastTransaction(@Body signedTransaction: SignedTransaction): BroadcastTransactionResponse
 
         @GET("wallet/getchainparameters")
-        fun getChainParameters(): Single<ChainParametersResponse>
+        suspend fun getChainParameters(): ChainParametersResponse
 
 
         // TronGrid extension API
 
         @GET("v1/accounts/{address}")
-        fun accountInfo(@Path("address") address: String): Single<AccountInfoResponse>
+        suspend fun accountInfo(@Path("address") address: String): AccountInfoResponse
 
         @GET("v1/accounts/{address}/transactions")
-        fun transactions(
+        suspend fun transactions(
             @Path("address") address: String,
             @Query("min_timestamp") startBlockTimestamp: Long,
             @Query("fingerprint") fingerprint: String?,
             @Query("only_confirmed") onlyConfirmed: Boolean,
             @Query("limit") limit: Int,
             @Query("order_by") orderBy: String
-        ): Single<TransactionsResponse>
+        ): TransactionsResponse
 
         @GET("v1/accounts/{address}/transactions/trc20")
-        fun contractTransactions(
+        suspend fun contractTransactions(
             @Path("address") address: String,
             @Query("min_timestamp") startBlockTimestamp: Long,
             @Query("fingerprint") fingerprint: String?,
             @Query("only_confirmed") onlyConfirmed: Boolean,
             @Query("limit") limit: Int,
             @Query("order_by") orderBy: String
-        ): Single<ContractTransactionsResponse>
+        ): ContractTransactionsResponse
     }
 
     companion object {
