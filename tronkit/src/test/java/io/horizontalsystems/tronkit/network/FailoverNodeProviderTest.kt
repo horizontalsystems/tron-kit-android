@@ -4,6 +4,7 @@ import io.horizontalsystems.tronkit.rpc.JsonRpc
 import io.horizontalsystems.tronkit.rpc.RpcResponse
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -89,24 +90,66 @@ class FailoverNodeProviderTest {
         assertEquals("second", provider.fetch(stringRpc("eth_estimateGas")))
     }
 
+    // A refusal worded in a way nobody has seen yet must not need a kit release
     @Test
-    fun revertedCallIsNotRetriedOnAnotherNode() {
-        val reverted = JsonRpc.ResponseError.RpcError(RpcResponse.Error(-32000, "REVERT opcode executed"))
+    fun anyCallErrorIsAskedOfAnotherNode() = runBlocking {
+        first.onCall = { throw rpcError(-32000, "constant calls are disabled on this node") }
+
+        assertEquals("second", provider.fetch(stringRpc("eth_call")))
+        assertEquals(listOf("fetch"), second.calls)
+    }
+
+    @Test
+    fun revertedCallIsReportedOnceEveryNodeGaveAnError() {
+        val reverted = rpcError(-32000, "REVERT opcode executed")
         first.onCall = { throw reverted }
+        second.onCall = { throw rpcError(-32000, "REVERT opcode executed") }
 
         assertSame(reverted, failure { provider.fetch(stringRpc("eth_call")) })
-        assertTrue(second.calls.isEmpty())
+        assertEquals(listOf("fetch"), second.calls)
     }
+
+    @Test
+    fun callErrorIsReportedRatherThanAnotherNodesOutage() {
+        val reverted = rpcError(-32000, "REVERT opcode executed")
+        first.onCall = { throw reverted }
+        second.onCall = { throw IOException("second is down") }
+
+        assertSame(reverted, failure { provider.fetch(stringRpc("eth_call")) })
+    }
+
+    @Test
+    fun callErrorIsReportedRatherThanAnotherNodesLimit() {
+        val reverted = rpcError(-32000, "REVERT opcode executed")
+        first.onCall = { throw rpcError(-32600, "this node does not support constant") }
+        second.onCall = { throw reverted }
+
+        assertSame(reverted, failure { provider.fetch(stringRpc("eth_call")) })
+    }
+
+    // A node that gave an error for a call has not shown that it can run calls
+    @Test
+    fun nodeThatGaveACallErrorDoesNotBecomePreferred() = runBlocking {
+        first.onCall = { throw IOException("first is down") }
+        second.onCall = { throw rpcError(-32000, "REVERT opcode executed") }
+        failure { provider.fetch(stringRpc("eth_call")) }
+        first.onCall = {}
+        first.calls.clear()
+
+        assertEquals("first", provider.fetch(stringRpc("eth_call")))
+        assertEquals(listOf("fetch"), first.calls)
+    }
+
+    private fun rpcError(code: Int, message: String) = JsonRpc.ResponseError.RpcError(RpcResponse.Error(code, message))
 
     private fun stringRpc(method: String) = object : JsonRpc<String>(method, emptyList()) {
         override val typeOfResult: Type = String::class.java
     }
 
     @Test
-    fun rpcErrorIsNotRetriedOnAnotherNode() {
-        val rpcError = JsonRpc.ResponseError.RpcError(RpcResponse.Error(-32000, "execution reverted"))
-
-        assertTrue(FailoverNodeProvider.isAnswer(rpcError))
+    fun onlyARefusalAboutTheRequestIsFinal() {
         assertTrue(FailoverNodeProvider.isAnswer(NodeResponseError("createTransaction error: no account")))
+        assertFalse(FailoverNodeProvider.isAnswer(NodeResponseError("broadcastTransaction error: SERVER_BUSY - ", "SERVER_BUSY")))
+        assertFalse(FailoverNodeProvider.isAnswer(rpcError(-32000, "execution reverted")))
     }
 }

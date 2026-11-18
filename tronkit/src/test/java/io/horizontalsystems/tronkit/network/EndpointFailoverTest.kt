@@ -118,4 +118,17 @@ class EndpointFailoverTest {
             assertEquals("b is down", e.message)
         }
     }
+
+    @Test
+    fun reportChoosesWhichFailureIsThrown() = runBlocking {
+        val failover = EndpointFailover(listOf("a", "b"), isAnswer = { false }, report = { it.first() })
+
+        try {
+            failover.execute(answer(setOf("a", "b")))
+            fail("expected IOException")
+        } catch (e: IOException) {
+            assertEquals("a is down", e.message)
+            assertEquals(listOf("a", "b"), calls)
+        }
+    }
 }

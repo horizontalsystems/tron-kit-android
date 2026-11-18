@@ -15,7 +15,7 @@ internal class FailoverNodeProvider<P>(
     clock: () -> Long = System::currentTimeMillis,
 ) : IRpcApiProvider, INodeApiProvider where P : IRpcApiProvider, P : INodeApiProvider {
 
-    private val failover = EndpointFailover(providers, ::isAnswer, preferredTtlMs, clock)
+    private val failover = EndpointFailover(providers, ::isAnswer, preferredTtlMs, clock, ::mostTelling)
 
     override suspend fun <T> fetch(rpc: JsonRpc<T>): T =
         failover.execute { it.fetch(rpc) }
@@ -60,17 +60,28 @@ internal class FailoverNodeProvider<P>(
         // next one is asked. Same as ethereum-kit, which runs on OkHttp's default.
         private const val NODE_READ_TIMEOUT_MS = 10_000L
 
-        // What every node would answer the same way. Anything else (no connection, an HTTP
-        // error such as a rate limit, a node reporting its own state) is worth another node.
-        internal fun isAnswer(error: Throwable): Boolean = when (error) {
-            is JsonRpc.ResponseError.RpcError -> !isNodeLimit(error.error)
-            is NodeResponseError -> !error.isNodeState
-            else -> false
+        // What every node would answer the same way: a refusal to create or broadcast that is
+        // about the request, not about the node. Anything else is worth another node: no
+        // connection, an HTTP error such as a rate limit, a node reporting its own state.
+        //
+        // A JSON-RPC error is worth another node too. It may be the chain's answer (a
+        // reverted call) or only this node's (Pocket Network routes to nodes that have
+        // contract calls switched off), and the wording does not tell the two apart reliably.
+        // Every JSON-RPC call here is a read, sending goes through broadcastTransaction, so
+        // asking again costs a request and nothing else.
+        internal fun isAnswer(error: Throwable): Boolean =
+            error is NodeResponseError && !error.isNodeState
+
+        // What to report when no node gave a result. An error a node gave for the call says
+        // more than a failed connection to another node, and a node's own limit says least.
+        internal fun mostTelling(errors: List<Throwable>): Throwable {
+            val rpcErrors = errors.filterIsInstance<JsonRpc.ResponseError.RpcError>()
+            return rpcErrors.firstOrNull { !isNodeLimit(it.error) }
+                ?: rpcErrors.firstOrNull()
+                ?: errors.last()
         }
 
-        // A node that has contract calls switched off, or lacks the method, says so in a
-        // JSON-RPC error. Pocket Network routes to such nodes at random ("this node does not
-        // support constant"), which fails eth_call and eth_estimateGas. Another node runs them.
+        // "this node does not support constant" on Pocket Network, or a missing method
         private fun isNodeLimit(error: RpcResponse.Error): Boolean {
             val message: String? = error.message
             return error.code == METHOD_NOT_FOUND || message?.contains("does not support", ignoreCase = true) == true
