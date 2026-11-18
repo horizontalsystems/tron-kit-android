@@ -35,7 +35,8 @@ import kotlin.random.Random
 class TronGridProvider(
     baseUrl: URL,
     apiKeys: List<String>,
-    private val auth: String? = null
+    private val auth: String? = null,
+    readTimeoutMs: Long = DEFAULT_READ_TIMEOUT_MS,
 ) : IRpcApiProvider, INodeApiProvider, IHistoryProvider {
 
     private var currentRpcId = AtomicInteger(0)
@@ -93,7 +94,7 @@ class TronGridProvider(
                 }
             }
             .connectTimeout(5, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(readTimeoutMs, TimeUnit.MILLISECONDS)
 
         val url = baseUrl.toString()
         gsonRpc = gson(isHex = true)
@@ -139,8 +140,8 @@ class TronGridProvider(
             )
         )
 
-        check(response.Error == null) {
-            "createTransaction error: ${response.Error?.let { hexStringToUtf8String(it) }}"
+        response.Error?.let {
+            throw NodeResponseError("createTransaction error: ${hexStringToUtf8String(it)}")
         }
 
         return response
@@ -165,8 +166,11 @@ class TronGridProvider(
             )
         )
 
-        check(response.result.result) {
-            "triggerSmartContract error: ${response.result.code} - ${hexStringToUtf8String(response.result.message)}"
+        if (!response.result.result) {
+            throw NodeResponseError(
+                "triggerSmartContract error: ${response.result.code} - ${hexStringToUtf8String(response.result.message)}",
+                response.result.code
+            )
         }
 
         return response.transaction
@@ -183,9 +187,18 @@ class TronGridProvider(
             )
         )
 
-        check(response.result) {
-            "broadcastTransaction error: ${response.code} - ${hexStringToUtf8String(response.message)}"
+        if (!response.result) {
+            throw NodeResponseError(
+                "broadcastTransaction error: ${response.code} - ${hexStringToUtf8String(response.message)}",
+                response.code
+            )
         }
+    }
+
+    override suspend fun isTransactionOnChain(txID: String): Boolean {
+        // An unknown id answers an empty object
+        val response = extensionApi.getTransactionById(GetTransactionByIdRequest(txID))
+        return response.has("txID")
     }
 
     // IHistoryProvider
@@ -303,6 +316,10 @@ class TronGridProvider(
         @Headers("Content-Type: application/json", "Accept: application/json")
         suspend fun broadcastTransaction(@Body signedTransaction: SignedTransaction): BroadcastTransactionResponse
 
+        @POST("wallet/gettransactionbyid")
+        @Headers("Content-Type: application/json", "Accept: application/json")
+        suspend fun getTransactionById(@Body request: GetTransactionByIdRequest): JsonObject
+
         @GET("wallet/getchainparameters")
         suspend fun getChainParameters(): ChainParametersResponse
 
@@ -336,12 +353,19 @@ class TronGridProvider(
     companion object {
         private const val PAGE_LIMIT = 200
         private const val ORDER_BY = "block_timestamp,asc"
+
+        // Long enough for a page of history
+        private const val DEFAULT_READ_TIMEOUT_MS = 60_000L
     }
 }
 
 data class GetAccountRequest(
     val address: String,
     val visible: Boolean = false
+)
+
+data class GetTransactionByIdRequest(
+    val value: String
 )
 
 data class ChainParametersResponse(

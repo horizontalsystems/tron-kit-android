@@ -8,7 +8,7 @@ import io.horizontalsystems.tronkit.decoration.TokenInfo
 import io.horizontalsystems.tronkit.models.Address
 import io.horizontalsystems.tronkit.models.RpcSource
 import io.horizontalsystems.tronkit.network.IRpcApiProvider
-import io.horizontalsystems.tronkit.network.TronGridProvider
+import io.horizontalsystems.tronkit.network.FailoverNodeProvider
 import io.horizontalsystems.tronkit.toBigInteger
 import io.horizontalsystems.tronkit.toHexString
 
@@ -71,7 +71,7 @@ class Trc20Provider(
 
     companion object {
         fun getInstance(rpcSource: RpcSource): Trc20Provider {
-            val provider = TronGridProvider(rpcSource.urls.first(), rpcSource.apiKeys)
+            val provider = FailoverNodeProvider.forSource(rpcSource)
             return Trc20Provider(provider)
         }
     }

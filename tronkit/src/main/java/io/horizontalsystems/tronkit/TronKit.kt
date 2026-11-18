@@ -20,6 +20,7 @@ import io.horizontalsystems.tronkit.models.TransferContract
 import io.horizontalsystems.tronkit.models.TriggerSmartContract
 import io.horizontalsystems.tronkit.network.ConnectionManager
 import io.horizontalsystems.tronkit.network.CreatedTransaction
+import io.horizontalsystems.tronkit.network.FailoverNodeProvider
 import io.horizontalsystems.tronkit.network.IHistoryProvider
 import io.horizontalsystems.tronkit.network.Network
 import io.horizontalsystems.tronkit.network.TronGridProvider
@@ -313,7 +314,7 @@ class TronKit(
             // balanceOf sync running for inactive accounts.
             gaslessAccount: Boolean = false
         ): TronKit {
-            val tronGridProvider = TronGridProvider(rpcSource.urls.first(), rpcSource.apiKeys, rpcSource.auth)
+            val tronGridProvider = FailoverNodeProvider.forSource(rpcSource)
 
             val historyProvider: IHistoryProvider? = transactionSource?.let { source ->
                 when (source.type) {

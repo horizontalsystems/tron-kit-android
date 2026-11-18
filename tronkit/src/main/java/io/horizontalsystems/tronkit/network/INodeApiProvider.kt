@@ -15,6 +15,9 @@ interface INodeApiProvider {
         feeLimit: Long
     ): CreatedTransaction
     suspend fun broadcastTransaction(createdTransaction: CreatedTransaction, signature: ByteArray)
+
+    /** Whether a block holds the transaction. One that is still waiting for a block is not found. */
+    suspend fun isTransactionOnChain(txID: String): Boolean
 }
 
 data class NodeAccountResponse(val balance: BigInteger)
