@@ -140,6 +140,38 @@ class FailoverNodeProviderTest {
         assertEquals(listOf("fetch"), first.calls)
     }
 
+    // After a broadcast whose answer was lost, any node may be the one that has the transaction
+    @Test
+    fun transactionUnknownToOneNodeIsFoundOnAnother() = runBlocking {
+        first.onChain = { false }
+        second.onChain = { true }
+
+        assertTrue(provider.isTransactionOnChain("id"))
+    }
+
+    @Test
+    fun transactionNoNodeHasIsNotFound() = runBlocking {
+        assertFalse(provider.isTransactionOnChain("id"))
+        assertEquals(listOf("isTransactionOnChain"), first.calls)
+        assertEquals(listOf("isTransactionOnChain"), second.calls)
+    }
+
+    @Test
+    fun nodeThatCannotBeAskedDoesNotHideTheTransaction() = runBlocking {
+        first.onCall = { throw IOException("first is down") }
+        second.onChain = { true }
+
+        assertTrue(provider.isTransactionOnChain("id"))
+    }
+
+    @Test
+    fun transactionIsNotFoundWhenNoNodeCanBeAsked() = runBlocking {
+        first.onCall = { throw IOException("first is down") }
+        second.onCall = { throw IOException("second is down") }
+
+        assertFalse(provider.isTransactionOnChain("id"))
+    }
+
     private fun rpcError(code: Int, message: String) = JsonRpc.ResponseError.RpcError(RpcResponse.Error(code, message))
 
     private fun stringRpc(method: String) = object : JsonRpc<String>(method, emptyList()) {

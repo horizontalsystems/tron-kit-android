@@ -3,6 +3,7 @@ package io.horizontalsystems.tronkit.network
 import io.horizontalsystems.tronkit.models.RpcSource
 import io.horizontalsystems.tronkit.rpc.JsonRpc
 import io.horizontalsystems.tronkit.rpc.RpcResponse
+import kotlinx.coroutines.CancellationException
 import java.math.BigInteger
 
 /**
@@ -10,7 +11,7 @@ import java.math.BigInteger
  * falls over to the next when that one fails. See [EndpointFailover].
  */
 internal class FailoverNodeProvider<P>(
-    providers: List<P>,
+    private val providers: List<P>,
     preferredTtlMs: Long = EndpointFailover.PREFERRED_TTL_MS,
     clock: () -> Long = System::currentTimeMillis,
 ) : IRpcApiProvider, INodeApiProvider where P : IRpcApiProvider, P : INodeApiProvider {
@@ -44,8 +45,24 @@ internal class FailoverNodeProvider<P>(
     override suspend fun broadcastTransaction(createdTransaction: CreatedTransaction, signature: ByteArray) =
         failover.execute { it.broadcastTransaction(createdTransaction, signature) }
 
-    override suspend fun isTransactionOnChain(txID: String): Boolean =
-        failover.execute { it.isTransactionOnChain(txID) }
+    // A node that does not have the transaction says nothing about the others: another node
+    // may be the one that took it, and a node can be a few blocks behind. So every node is
+    // asked, and one that has it is enough. A node that cannot be asked counts as not having it.
+    override suspend fun isTransactionOnChain(txID: String): Boolean {
+        for (provider in providers) {
+            if (hasTransaction(provider, txID)) return true
+        }
+        return false
+    }
+
+    private suspend fun hasTransaction(provider: P, txID: String): Boolean =
+        try {
+            provider.isTransactionOnChain(txID)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            false
+        }
 
     companion object {
         /** A provider per endpoint, each with its own client, so credentials stay with their endpoint. */
