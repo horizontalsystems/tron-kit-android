@@ -131,4 +131,25 @@ class EndpointFailoverTest {
             assertEquals(listOf("a", "b"), calls)
         }
     }
+
+    @Test
+    fun preferenceReadWhileItIsSetIsKept() = runBlocking {
+        // Later than the TTL, as any real clock is
+        now = 5_000
+        var reading = false
+        lateinit var failover: EndpointFailover<String>
+        // Another request reads the preference at the moment this one stores it
+        failover = EndpointFailover(listOf("a", "b"), isAnswer = { it is Refused }, preferredTtlMs = 1_000, clock = {
+            if (!reading) {
+                reading = true
+                failover.preferred
+                reading = false
+            }
+            now
+        })
+
+        failover.execute(answer(setOf("a")))
+
+        assertEquals("b", failover.preferred)
+    }
 }
