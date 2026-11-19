@@ -2,7 +2,9 @@ package io.horizontalsystems.tronkit.network
 
 import io.horizontalsystems.tronkit.rpc.JsonRpc
 import io.horizontalsystems.tronkit.rpc.RpcResponse
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
@@ -170,6 +172,30 @@ class FailoverNodeProviderTest {
         second.onCall = { throw IOException("second is down") }
 
         assertFalse(provider.isTransactionOnChain("id"))
+    }
+
+    // The caller allows the lookup a few seconds. A node that stays silent must not use them up
+    // before a node that has the transaction is reached.
+    @Test
+    fun silentNodeDoesNotHoldUpTheLookup() = runBlocking {
+        first.onChain = {
+            delay(60_000)
+            false
+        }
+        second.onChain = { true }
+
+        assertTrue(withTimeout(2_000) { provider.isTransactionOnChain("id") })
+    }
+
+    @Test
+    fun lookupWaitsForASlowNodeThatHasTheTransaction() = runBlocking {
+        first.onChain = { false }
+        second.onChain = {
+            delay(100)
+            true
+        }
+
+        assertTrue(provider.isTransactionOnChain("id"))
     }
 
     private fun rpcError(code: Int, message: String) = JsonRpc.ResponseError.RpcError(RpcResponse.Error(code, message))

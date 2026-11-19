@@ -4,6 +4,9 @@ import io.horizontalsystems.tronkit.models.RpcSource
 import io.horizontalsystems.tronkit.rpc.JsonRpc
 import io.horizontalsystems.tronkit.rpc.RpcResponse
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
 import java.math.BigInteger
 
 /**
@@ -48,12 +51,15 @@ internal class FailoverNodeProvider<P>(
     // A node that does not have the transaction says nothing about the others: another node
     // may be the one that took it, and a node can be a few blocks behind. So every node is
     // asked, and one that has it is enough. A node that cannot be asked counts as not having it.
-    override suspend fun isTransactionOnChain(txID: String): Boolean {
-        for (provider in providers) {
-            if (hasTransaction(provider, txID)) return true
-        }
-        return false
-    }
+    //
+    // All are asked at once and the first that has it ends the lookup: asked in turn, a node
+    // that stays silent would use up the time the caller allows before the next one is reached.
+    override suspend fun isTransactionOnChain(txID: String): Boolean =
+        channelFlow {
+            providers.forEach { provider ->
+                launch { send(hasTransaction(provider, txID)) }
+            }
+        }.firstOrNull { it } ?: false
 
     private suspend fun hasTransaction(provider: P, txID: String): Boolean =
         try {
